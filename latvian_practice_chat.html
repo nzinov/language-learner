@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Latvian Practice Chat</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #f5f5f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 1rem;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 640px;
+    width: 100%;
+    max-width: 700px;
+    border: 1px solid #e0ddd6;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  #header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0ddd6;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: #fafaf7;
+  }
+
+  #input-area {
+    padding: 10px 14px;
+    border-top: 1px solid #e0ddd6;
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+    flex-shrink: 0;
+    background: #fff;
+  }
+
+  #inp {
+    flex: 1;
+    resize: none;
+    min-height: 40px;
+    max-height: 100px;
+    padding: 8px 12px;
+    font-size: 14px;
+    border-radius: 8px;
+    font-family: inherit;
+    line-height: 1.5;
+    overflow-y: hidden;
+    border: 1px solid #d0cdc6;
+    outline: none;
+    color: #1a1a18;
+    background: #fff;
+    transition: border-color 0.15s;
+  }
+  #inp:focus { border-color: #888; }
+  #inp::placeholder { color: #aaa; }
+
+  button {
+    font-family: inherit;
+    border-radius: 8px;
+    border: 1px solid #d0cdc6;
+    background: #fff;
+    color: #1a1a18;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  button:hover:not(:disabled) { background: #f2f2ee; }
+  button:active:not(:disabled) { transform: scale(0.98); }
+  button:disabled { opacity: 0.45; cursor: default; }
+
+  #sendBtn  { height: 40px; padding: 0 16px; font-size: 14px; flex-shrink: 0; }
+  #transBtn { height: 40px; padding: 0 12px; font-size: 13px; flex-shrink: 0; color: #555; }
+  #clearBtn,
+  #debugBtn { width: 28px; height: 28px; padding: 0; font-size: 13px; line-height: 1;
+              display: inline-flex; align-items: center; justify-content: center; color: #888;
+              font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+
+  /* ── Message layout ── */
+  .ai-wrap   { display: flex; flex-direction: column; max-width: 88%; align-self: flex-start; }
+  .user-wrap { display: flex; flex-direction: column; max-width: 85%; align-self: flex-end; }
+
+  /* Bubble + translate button sit in a stable row, button centered against the bubble.
+     Button uses visibility (not display) so its column width is reserved from
+     the moment the bubble is created — the bubble never reflows. */
+  .ai-row { display: flex; align-items: center; gap: 8px; }
+
+  .ai-bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 15px;
+    line-height: 1.7;
+    background: #f0ede8;
+    border: 1px solid #e0ddd6;
+    color: #1a1a18;
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  .user-bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 15px;
+    line-height: 1.7;
+    background: #ddeef9;
+    border: 1px solid #bbd6ee;
+    color: #1a4a6e;
+  }
+
+  /* Translate-toggle icon: pre-allocated, invisible until translation is available */
+  .en-btn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 16px;
+    line-height: 1;
+    color: #555;
+    border: 1px solid #e0ddd6;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    visibility: hidden;
+  }
+  .en-btn.ready  { visibility: visible; }
+  .en-btn.active { border-color: #bbb; background: #f2f2ee; }
+
+  .trans-panel {
+    font-size: 13px;
+    color: #666;
+    margin-top: 6px;
+    padding: 6px 10px;
+    border-left: 2px solid #d0cdc6;
+    border-radius: 0 4px 4px 0;
+    font-style: italic;
+    display: none;
+    line-height: 1.5;
+  }
+
+  /* No padding on word chips — identical footprint to plain text,
+     so swapping text node → spans in finalize() causes zero reflow. */
+  .w {
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.1s, color 0.1s;
+  }
+  .w:hover { background: #fff3cd; color: #7a5c00; }
+
+  /* User bubble in "has-errors" state: red-tinted, with wavy underlines on wrong words */
+  .user-bubble.has-errors {
+    background: #fde8e8;
+    border-color: #e09090;
+    color: #7a2020;
+  }
+  .err-word {
+    cursor: pointer;
+    text-decoration: underline wavy #d03030;
+    text-decoration-skip-ink: none;
+    text-underline-offset: 3px;
+    border-radius: 3px;
+    transition: background 0.1s;
+  }
+  .err-word:hover { background: rgba(208,48,48,0.12); }
+  .popup-correction {
+    font-size: 14px; margin-bottom: 8px; line-height: 1.5;
+  }
+  .popup-correction .orig { text-decoration: line-through; opacity: 0.65; }
+  .popup-correction .arr  { color: #999; margin: 0 6px; }
+  .popup-correction .fix  { font-weight: 600; color: #2a5a8a; }
+  .popup-body strong      { font-weight: 600; color: #1a1a18; }
+  .popup-body em          { font-style: italic; }
+  .popup-body code        { font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+                            background: #f2f2ee; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .popup-body ul          { margin: 4px 0; padding-left: 18px; }
+  .popup-body li          { margin: 2px 0; }
+  .popup-body p + p,
+  .popup-body div + div   { margin-top: 6px; }
+
+  /* ── Debug modal ── */
+  #debugModal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 2000;
+    padding: 20px;
+  }
+  #debugModal.open { display: flex; }
+  #debugBox {
+    background: #fff;
+    width: min(820px, 100%);
+    height: min(80vh, 720px);
+    border-radius: 12px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  }
+  #debugHead {
+    padding: 10px 14px;
+    border-bottom: 1px solid #e0ddd6;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px;
+    font-size: 13px; font-weight: 500;
+    background: #fafaf7;
+    flex-shrink: 0;
+  }
+  #debugHead .actions { display: flex; gap: 6px; }
+  #debugHead button {
+    height: 28px; padding: 0 10px; font-size: 12px;
+    border-radius: 6px;
+  }
+  #debugContent {
+    flex: 1;
+    overflow: auto;
+    margin: 0;
+    padding: 12px 14px;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #222;
+    background: #fdfdfa;
+  }
+
+  .xlat-wrap   { display: flex; flex-direction: column; align-self: stretch; }
+  .xlat-label  { font-size: 11px; color: #2a7a50; font-weight: 500; margin-bottom: 4px; text-align: center; }
+  .xlat-bubble { padding: 10px 14px; border-radius: 14px; font-size: 15px; line-height: 1.7; background: #f0ede8; border: 1px solid #a8cfa8; color: #1a1a18; }
+  .xlat-exp    { font-size: 13px; color: #666; margin-top: 5px; padding: 4px 10px; line-height: 1.5; font-style: italic; }
+
+  .loader-wrap   { display: flex; align-self: flex-start; }
+  .loader-bubble { padding: 11px 14px; border-radius: 14px; background: #f0ede8; border: 1px solid #e0ddd6; display: flex; gap: 5px; align-items: center; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #aaa; animation: bounce 1.2s infinite; display: inline-block; }
+
+  #tip {
+    position: absolute;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: #555;
+    display: none;
+    z-index: 999;
+    pointer-events: none;
+    max-width: 260px;
+    line-height: 1.4;
+    font-family: system-ui, sans-serif;
+  }
+
+  #popup {
+    position: fixed;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 12px 30px 12px 14px;
+    font-size: 13px;
+    color: #1a1a18;
+    display: none;
+    z-index: 1000;
+    max-width: 340px;
+    line-height: 1.55;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    font-family: system-ui, sans-serif;
+  }
+  .popup-word  { font-weight: 600; font-size: 14px; color: #2a5a8a; margin-bottom: 6px; }
+  .popup-brief { font-size: 12px; color: #777; margin-bottom: 8px; font-style: italic; }
+  .popup-body  { white-space: pre-wrap; }
+  .popup-close {
+    position: absolute; top: 4px; right: 6px;
+    width: 22px; height: 22px; padding: 0;
+    font-size: 16px; line-height: 1; color: #999;
+    border: none; background: transparent; cursor: pointer;
+    border-radius: 4px;
+  }
+  .popup-close:hover { background: #f2f2ee; color: #333; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="header">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-weight:500;font-size:15px;">Latvian practice</span>
+      <span style="font-size:12px;color:#bbb;">hover words · grammar tips · → LV</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span id="status" style="font-size:12px;color:#2a7a50;">ready</span>
+      <button id="debugBtn" title="Показать состояние (debug)">{ }</button>
+      <button id="clearBtn" title="Очистить разговор">🗑</button>
+    </div>
+  </div>
+  <div id="chat"></div>
+  <div id="input-area">
+    <textarea id="inp" rows="1" placeholder="Rakstiet latviski… (or English / Russian)"></textarea>
+    <button id="transBtn" onclick="translateInput()" title="Translate to Latvian">→ LV</button>
+    <button id="sendBtn"  onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<div id="tip"></div>
+<div id="popup"></div>
+
+<div id="debugModal">
+  <div id="debugBox">
+    <div id="debugHead">
+      <span>Debug · состояние разговора</span>
+      <div class="actions">
+        <button id="debugCopyBtn" title="Copy JSON">Copy</button>
+        <button id="debugCloseBtn" title="Close (Esc)">Close</button>
+      </div>
+    </div>
+    <pre id="debugContent"></pre>
+  </div>
+</div>
+
+<script>
+// ── Tool definitions ───────────────────────────────────────────────────────────
+
+const MAIN_TOOL = {
+  name: 'latvian_reply',
+  description: 'Reply to the learner in Latvian with word-by-word Russian translation and feedback on their input.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      response: {
+        type: 'string',
+        description: 'Your Latvian reply (1–3 natural sentences).'
+      },
+      words: {
+        type: 'array',
+        description: 'Every word from response in order. Strip ALL punctuation from each token — "Labdien" not "Labdien!", "klājas" not "klājas?".',
+        items: {
+          type: 'object',
+          properties: {
+            word:        { type: 'string', description: 'Latvian word without punctuation.' },
+            translation: { type: 'string', description: 'Russian meaning (in Russian, Cyrillic); brief grammar note in Russian if useful, e.g. "(дат. п.)".' }
+          },
+          required: ['word', 'translation']
+        }
+      },
+      errors: {
+        type: 'array',
+        description: 'Grammar or vocabulary mistakes in the learner\'s message. Empty array if none. NEVER flag missing diacritics. Explanations MUST be written in Russian.',
+        items: {
+          type: 'object',
+          properties: {
+            original:    { type: 'string' },
+            correction:  { type: 'string' },
+            explanation: { type: 'string', description: 'Short explanation of the mistake, written in Russian.' }
+          },
+          required: ['original', 'correction', 'explanation']
+        }
+      }
+    },
+    required: ['response', 'words', 'errors']
+    // fullTranslation removed — fetched lazily via a separate call when user clicks 🌐
+  }
+};
+
+const TRANSLATE_TOOL = {
+  name: 'translation_result',
+  description: 'Return the Latvian translation with word breakdown and explanation in Russian.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      latvian:     { type: 'string', description: 'The Latvian translation.' },
+      words: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            word:        { type: 'string', description: 'Latvian word without punctuation.' },
+            translation: { type: 'string', description: 'Russian meaning (Cyrillic); brief grammar note in Russian if useful.' }
+          },
+          required: ['word', 'translation']
+        }
+      },
+      explanation: { type: 'string', description: '2–3 sentences in Russian on key vocabulary or grammar.' }
+    },
+    required: ['latvian', 'words', 'explanation']
+  }
+};
+
+// ── System prompts ─────────────────────────────────────────────────────────────
+
+const SYSTEM = `You are a warm Latvian language tutor having natural conversations in Latvian.
+Always call the latvian_reply tool to respond.
+
+Drive the conversation — don't just answer passively:
+- Lead the learner into interesting, varied topics.
+- Always end with a concrete follow-up question that invites the learner to answer with a full sentence rather than yes or not. Vary the question type.
+- If a thread is going flat or the learner gives short answers, gently pivot to a fresh topic instead of grinding on.
+- Match the learner's level — keep sentences short and clear for beginners, richer for stronger learners.
+
+Rules:
+- words: every word from your response in order; strip all punctuation from each token
+- ALL translations, explanations, and grammar notes MUST be written in Russian (Cyrillic). The "response" field stays in Latvian; everything explanatory is in Russian.
+- errors: grammar/vocabulary mistakes in the learner's message only; empty array if none; explanations in Russian
+- If the user writes in Russian: understand it and respond in Latvian as usual
+- Be encouraging and natural`;
+
+const TRANSLATE_SYSTEM = `Translate the given text to Latvian. Call the translation_result tool. The Latvian translation goes in the "latvian" field; per-word glosses and the explanation must be written in Russian (Cyrillic).`;
+
+// ── API config ─────────────────────────────────────────────────────────────────
+
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const MODEL          = 'openai/gpt-5.4-mini';
+
+function getApiKey() {
+  let key = localStorage.getItem('openrouter_key');
+  if (!key) {
+    key = prompt('Enter your OpenRouter API key (stored in localStorage):');
+    if (key) localStorage.setItem('openrouter_key', key.trim());
+  }
+  return key;
+}
+
+// OpenAI-style tool wrapping from the Anthropic-style definitions above
+function wrapTool(t) {
+  return { type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } };
+}
+
+// ── State ──────────────────────────────────────────────────────────────────────
+
+let hist     = []; // conversation history (OpenAI chat format) — drives the API
+let rendered = []; // parallel UI log: sequence of {kind:'user'|'ai', ...} used to replay bubbles on reload
+let busy     = false;
+
+// ── Persistence ────────────────────────────────────────────────────────────────
+
+const STORAGE_KEY = 'latvian_chat_v1';
+
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ hist, rendered })); } catch {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || !Array.isArray(obj.hist) || !Array.isArray(obj.rendered)) return null;
+    return obj;
+  } catch { return null; }
+}
+function clearState() { try { localStorage.removeItem(STORAGE_KEY); } catch {} }
+
+// ── DOM ────────────────────────────────────────────────────────────────────────
+
+const chat     = document.getElementById('chat');
+const inp      = document.getElementById('inp');
+const tip      = document.getElementById('tip');
+const statusEl = document.getElementById('status');
+
+// ── Utilities ──────────────────────────────────────────────────────────────────
+
+function setStatus(t, c) { statusEl.textContent = t; statusEl.style.color = c; }
+function setAllDisabled(v) {
+  inp.disabled = v;
+  document.getElementById('sendBtn').disabled  = v;
+  document.getElementById('transBtn').disabled = v;
+}
+function esc(t) { return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Tiny safe markdown renderer for popup bodies. Escapes HTML first, then applies:
+// `code`, **bold**, *italic*, bullet lists (- / *), and wraps plain lines in <div>.
+function renderMarkdown(md) {
+  let s = esc(md || '');
+  s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>');
+
+  const lines = s.split('\n');
+  const out   = [];
+  let inList  = false;
+  for (const ln of lines) {
+    const m = ln.match(/^\s*[-*]\s+(.*)$/);
+    if (m) {
+      if (!inList) { out.push('<ul>'); inList = true; }
+      out.push('<li>' + m[1] + '</li>');
+    } else {
+      if (inList) { out.push('</ul>'); inList = false; }
+      if (ln.trim()) out.push('<div>' + ln + '</div>');
+    }
+  }
+  if (inList) out.push('</ul>');
+  return out.join('');
+}
+function scrollDown() { chat.scrollTop = chat.scrollHeight; }
+
+// ── Tooltip ────────────────────────────────────────────────────────────────────
+
+function showTip(el, text) {
+  tip.textContent = text; tip.style.display = 'block';
+  const r = el.getBoundingClientRect(), sy = window.scrollY||0, sx = window.scrollX||0;
+  tip.style.top  = (r.bottom + sy + 5) + 'px';
+  tip.style.left = Math.max(4, Math.min(r.left + sx, (window.innerWidth||700) - 270)) + 'px';
+}
+function hideTip() { tip.style.display = 'none'; }
+
+// ── Word-explanation popup ────────────────────────────────────────────────────
+
+const popup     = document.getElementById('popup');
+const wordCache = new Map(); // key: sentence + '\u0001' + word → explanation text
+
+// popupMode: 'click' = word-explanation popup (persistent, close via ×/outside/Esc)
+//            'hover' = error popup (auto-hides on mouseleave with grace period)
+let popupMode      = null;
+let popupHideTimer = null;
+
+function cancelPopupHide() { clearTimeout(popupHideTimer); popupHideTimer = null; }
+function schedulePopupHide(ms) {
+  cancelPopupHide();
+  popupHideTimer = setTimeout(closePopup, ms ?? 150);
+}
+function closePopup() { popup.style.display = 'none'; popup._key = null; popupMode = null; cancelPopupHide(); }
+
+// Let the user mouse into the popup to read it without it disappearing.
+popup.addEventListener('mouseenter', () => { if (popupMode === 'hover') cancelPopupHide(); });
+popup.addEventListener('mouseleave', () => { if (popupMode === 'hover') schedulePopupHide(); });
+
+document.addEventListener('mousedown', e => {
+  if (popup.style.display === 'none') return;
+  if (popupMode !== 'click') return;              // hover popup handles its own dismissal
+  if (popup.contains(e.target)) return;
+  if (e.target.classList && e.target.classList.contains('w')) return;
+  closePopup();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closePopup(); closeDebug(); }
+});
+
+function positionPopup(el) {
+  const r  = el.getBoundingClientRect();
+  const vw = window.innerWidth  || 700;
+  const vh = window.innerHeight || 800;
+  popup.style.display = 'block';
+  const pw = popup.offsetWidth, ph = popup.offsetHeight;
+  let top  = r.bottom + 8;
+  if (top + ph > vh - 8) top = Math.max(8, r.top - ph - 8);
+  let left = Math.min(Math.max(8, r.left), vw - pw - 8);
+  popup.style.top  = top  + 'px';
+  popup.style.left = left + 'px';
+}
+
+async function showWordExplanation(el, word, sentence, brief, offset) {
+  const key = sentence + '\u0001' + offset + '\u0001' + word;
+  popup._key = key;
+  popupMode  = 'click';
+  cancelPopupHide();
+
+  popup.innerHTML = '';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'popup-close';
+  closeBtn.textContent = '×';
+  closeBtn.title = 'Close';
+  closeBtn.addEventListener('click', closePopup);
+
+  const title = document.createElement('div');
+  title.className = 'popup-word'; title.textContent = word;
+
+  const briefEl = document.createElement('div');
+  briefEl.className = 'popup-brief'; briefEl.textContent = brief || '';
+
+  const body = document.createElement('div');
+  body.className = 'popup-body';
+  if (wordCache.has(key)) body.innerHTML = renderMarkdown(wordCache.get(key));
+  else                    body.textContent = 'Loading…';
+
+  popup.appendChild(closeBtn);
+  popup.appendChild(title);
+  if (brief) popup.appendChild(briefEl);
+  popup.appendChild(body);
+
+  positionPopup(el);
+
+  if (!wordCache.has(key)) {
+    try {
+      const explanation = await explainWord(word, sentence, brief, offset);
+      wordCache.set(key, explanation);
+      if (popup._key === key) { body.innerHTML = renderMarkdown(explanation); positionPopup(el); }
+    } catch (err) {
+      if (popup._key === key) body.textContent = 'Could not load explanation.';
+    }
+  }
+}
+
+async function explainWord(word, sentence, brief, offset) {
+  const key = getApiKey();
+  if (!key) throw new Error('no api key');
+
+  // Mark the exact occurrence the user clicked with [[...]] so the model can
+  // disambiguate when the same word appears more than once.
+  let marked = sentence;
+  let occurrence = 1;
+  if (Number.isInteger(offset) && offset >= 0 && sentence.slice(offset, offset + word.length) === word) {
+    marked = sentence.slice(0, offset) + '[[' + word + ']]' + sentence.slice(offset + word.length);
+    // 1-based index of this occurrence among all occurrences of `word`
+    let idx = -1, n = 0;
+    while ((idx = sentence.indexOf(word, idx + 1)) !== -1 && idx <= offset) n++;
+    occurrence = n || 1;
+  }
+
+  const res = await fetch(OPENROUTER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+    body: JSON.stringify({
+      model:      MODEL,
+      max_tokens: 350,
+      messages: [
+        { role: 'system', content:
+          'You are a Latvian language tutor. The learner clicked a word in a Latvian sentence and wants an extended explanation. Do not mention the sentence, the user can see the sentence in the ui and nows locations of the word.' +
+          'The exact occurrence the learner clicked is wrapped in [[ ]] in the sentence provided — always explain that occurrence, not any other one. ' +
+          'Explain the word, any interesting things about it\'s usage in daily conversations. Also explain the grammar around the word and why it is like that. Do not explain very simple things, only notable ones' +
+          'Reply in RUSSIAN (Cyrillic). Be concise — 3–5 short sentences, no preamble, no markdown headers. Use plain prose. Latvian word forms you cite stay in Latvian; everything else is in Russian. DROP any [[ and ]] in your response' },
+        { role: 'user', content:
+          `Предложение (нужное вхождение отмечено двойными скобками): "${marked}"\n` +
+          `Слово: "${word}" (вхождение №${occurrence})` +
+          (brief ? `\nКраткий перевод: ${brief}` : '') +
+          `\n\nОбъясни грамматику и употребление именно отмеченного вхождения слова "${word}" в этом предложении.` }
+      ]
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || 'api error');
+  return (data.choices?.[0]?.message?.content || '').trim() || '(no explanation returned)';
+}
+
+// ── Word spans ─────────────────────────────────────────────────────────────────
+// Response text displayed exactly as received. Word tokens (no punctuation)
+// are located via indexOf; everything between them becomes a plain text node.
+// Spans have zero padding — visually identical to plain text.
+
+function makeWordSpans(responseText, words) {
+  const frag = document.createDocumentFragment();
+  let rem = responseText;
+  let consumed = 0;     // absolute offset into responseText of the start of `rem`
+  for (const w of words) {
+    if (!w.word) continue;
+    const idx = rem.indexOf(w.word);
+    if (idx === -1) continue;
+    if (idx > 0) frag.appendChild(document.createTextNode(rem.slice(0, idx)));
+    const absOffset = consumed + idx;     // exact start position of this occurrence
+    const s = document.createElement('span');
+    s.className   = 'w';
+    s.textContent = w.word;
+    s.addEventListener('mouseenter', () => showTip(s, w.translation));
+    s.addEventListener('mouseleave', hideTip);
+    s.addEventListener('click', e => {
+      e.stopPropagation();
+      hideTip();
+      showWordExplanation(s, w.word, responseText, w.translation, absOffset);
+    });
+    frag.appendChild(s);
+    const step = idx + w.word.length;
+    consumed += step;
+    rem = rem.slice(step);
+  }
+  if (rem) frag.appendChild(document.createTextNode(rem));
+  return frag;
+}
+
+// ── Streaming response-field extractor ────────────────────────────────────────
+// Parses the "response" string value out of a partial (incomplete) JSON object
+// as it arrives character-by-character. Handles escape sequences correctly.
+
+function extractResponseText(partial) {
+  const m = partial.match(/"response"\s*:\s*"/);
+  if (!m) return '';
+  let result = '', i = m.index + m[0].length;
+  while (i < partial.length) {
+    const ch = partial[i];
+    if (ch === '\\') {
+      if (i + 1 >= partial.length) break;      // incomplete escape — stop here
+      const nx = partial[++i];
+      if      (nx === 'n') result += '\n';
+      else if (nx === 'r') result += '\r';
+      else if (nx === 't') result += '\t';
+      else if (nx === '"') result += '"';
+      else if (nx === '\\') result += '\\';
+      else result += nx;
+    } else if (ch === '"') {
+      break;                                    // closing quote — string complete
+    } else {
+      result += ch;
+    }
+    i++;
+  }
+  return result;
+}
+
+// ── API: streaming tool call ───────────────────────────────────────────────────
+// Streams OpenAI-style tool_call argument deltas, calls onResponseText(text)
+// as the "response" field builds up, then returns { toolUseId, input }.
+
+async function streamToolApi(messages, system, tool, onResponseText) {
+  const key = getApiKey();
+  if (!key) throw new Error('no api key');
+
+  const fullMessages = [{ role: 'system', content: system }, ...messages];
+
+  const res = await fetch(OPENROUTER_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': 'Bearer ' + key
+    },
+    body: JSON.stringify({
+      model:       MODEL,
+      max_tokens:  1200,
+      stream:      true,
+      tools:       [wrapTool(tool)],
+      tool_choice: { type: 'function', function: { name: tool.name } },
+      messages:    fullMessages
+    })
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+
+  const reader = res.body.getReader(), decoder = new TextDecoder();
+  let buf = '', partialJson = '', toolUseId = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split('\n'); buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (!raw || raw === '[DONE]') continue;
+      try {
+        const ev = JSON.parse(raw);
+        const tc = ev.choices?.[0]?.delta?.tool_calls?.[0];
+        if (!tc) continue;
+        if (tc.id && !toolUseId) toolUseId = tc.id;
+        const argChunk = tc.function?.arguments;
+        if (argChunk) {
+          partialJson += argChunk;
+          const text = extractResponseText(partialJson);
+          if (text) onResponseText(text);
+        }
+      } catch {}
+    }
+  }
+
+  let input = null;
+  try { input = JSON.parse(partialJson); } catch {}
+  if (!toolUseId) toolUseId = 'call_' + Math.random().toString(36).slice(2, 10);
+  return { toolUseId, input };
+}
+
+// ── API: non-streaming tool call (translate button) ───────────────────────────
+
+async function callToolApi(messages, system, tool) {
+  const key = getApiKey();
+  if (!key) throw new Error('no api key');
+
+  const fullMessages = [{ role: 'system', content: system }, ...messages];
+
+  const res = await fetch(OPENROUTER_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': 'Bearer ' + key
+    },
+    body: JSON.stringify({
+      model:       MODEL,
+      max_tokens:  1000,
+      tools:       [wrapTool(tool)],
+      tool_choice: { type: 'function', function: { name: tool.name } },
+      messages:    fullMessages
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || 'api error');
+  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+  let input = {};
+  try { input = JSON.parse(toolCall?.function?.arguments || '{}'); } catch {}
+  return { toolUseId: toolCall?.id, input };
+}
+
+// ── UI: AI bubble ──────────────────────────────────────────────────────────────
+// Stable layout: bubble (left) + EN button (right) in a pre-allocated row.
+// EN button uses visibility:hidden so the column is reserved from creation —
+// the bubble width never changes when the button is revealed in finalize().
+
+function createAiBubble(entry) {
+  const wrap   = document.createElement('div'); wrap.className = 'ai-wrap';
+  const row    = document.createElement('div'); row.className  = 'ai-row';
+  const bubble = document.createElement('div'); bubble.className = 'ai-bubble';
+  const node   = document.createTextNode(''); bubble.appendChild(node);
+
+  const enBtn  = document.createElement('button'); enBtn.className = 'en-btn'; enBtn.textContent = '🌐';
+  enBtn.title  = 'Показать перевод';
+
+  const panel  = document.createElement('div'); panel.className = 'trans-panel';
+
+  let latvianText = '';
+  let open        = false;
+  let fetching    = false;
+
+  enBtn.addEventListener('click', async () => {
+    // Lazy fetch on first open if we don't already have a cached translation
+    if (!entry?.fullTranslation && !fetching && latvianText) {
+      fetching = true;
+      panel.textContent = 'Загрузка перевода…';
+      open = true;
+      panel.style.display = 'block';
+      enBtn.classList.add('active');
+      scrollDown();
+      try {
+        const ru = await translateToRussian(latvianText);
+        if (entry) entry.fullTranslation = ru;
+        panel.textContent = ru;
+        saveState();
+      } catch {
+        panel.textContent = 'Не удалось загрузить перевод.';
+      } finally {
+        fetching = false;
+        scrollDown();
+      }
+      return;
+    }
+    // Otherwise just toggle
+    open = !open;
+    panel.style.display = open ? 'block' : 'none';
+    enBtn.classList.toggle('active', open);
+    scrollDown();
+  });
+
+  row.appendChild(bubble); row.appendChild(enBtn);
+  wrap.appendChild(row); wrap.appendChild(panel);
+  chat.appendChild(wrap); scrollDown();
+
+  // Show response text progressively as tool input streams in
+  function updateText(responseText) {
+    node.textContent = responseText;
+    scrollDown();
+  }
+
+  // Replace plain text node with hoverable word spans; always reveal 🌐 button.
+  // If a translation is already cached on the entry (e.g. from replay), pre-fill the panel.
+  function finalize(latvian, input) {
+    latvianText = latvian;
+    bubble.innerHTML = '';
+    bubble.appendChild(
+      input?.words?.length
+        ? makeWordSpans(latvian, input.words)
+        : document.createTextNode(latvian)
+    );
+    if (entry?.fullTranslation) panel.textContent = entry.fullTranslation;
+    enBtn.classList.add('ready');
+    scrollDown();
+  }
+
+  return { updateText, finalize, wrap };
+}
+
+// On-demand Latvian → Russian translator for the 🌐 button
+async function translateToRussian(latvian) {
+  const key = getApiKey();
+  if (!key) throw new Error('no api key');
+  const res = await fetch(OPENROUTER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+    body: JSON.stringify({
+      model:      MODEL,
+      max_tokens: 300,
+      messages: [
+        { role: 'system', content: 'Переведи латышский текст на естественный русский. В ответе дай только перевод — без комментариев, без кавычек, без префикса.' },
+        { role: 'user',   content: latvian }
+      ]
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || 'api error');
+  return (data.choices?.[0]?.message?.content || '').trim();
+}
+
+// ── UI: user message ───────────────────────────────────────────────────────────
+
+function addUserMsg(text) {
+  const wrap   = document.createElement('div'); wrap.className = 'user-wrap';
+  const bubble = document.createElement('div'); bubble.className = 'user-bubble';
+  bubble.textContent = text; wrap.appendChild(bubble);
+  wrap._bubble = bubble;
+
+  // Delegated hover on the user bubble: show the error popup when pointing at an .err-word span.
+  bubble.addEventListener('mouseover', e => {
+    const errSpan = e.target && e.target.closest ? e.target.closest('.err-word') : null;
+    if (errSpan && errSpan._err) {
+      cancelPopupHide();
+      showErrorPopup(errSpan, errSpan._err);
+    }
+  });
+  bubble.addEventListener('mouseout', e => {
+    if (!bubble.contains(e.relatedTarget)) schedulePopupHide();
+  });
+
+  chat.appendChild(wrap); scrollDown(); return wrap;
+}
+
+// Highlight the user bubble red and underline every err.original in place.
+// Clicking an underlined word opens a popup with correction + explanation.
+function showErrors(userWrap, errors) {
+  const bubble = userWrap._bubble;
+  if (!bubble || !errors?.length) return;
+
+  bubble.classList.add('has-errors');
+
+  const original = bubble.textContent;
+  const frag     = document.createDocumentFragment();
+  const pending  = errors.slice();       // consume copy — matches same word twice if duplicated
+  let rem        = original;
+
+  while (rem.length && pending.length) {
+    let bestIdx = -1, bestErr = null, bestPos = -1;
+    for (let i = 0; i < pending.length; i++) {
+      const e = pending[i];
+      if (!e.original) continue;
+      const idx = rem.indexOf(e.original);
+      if (idx !== -1 && (bestIdx === -1 || idx < bestIdx)) {
+        bestIdx = idx; bestErr = e; bestPos = i;
+      }
+    }
+    if (bestIdx === -1) break;
+
+    if (bestIdx > 0) frag.appendChild(document.createTextNode(rem.slice(0, bestIdx)));
+    const span = document.createElement('span');
+    span.className   = 'err-word';
+    span.textContent = bestErr.original;
+    span._err = bestErr;  // picked up by the delegated bubble mouseover handler
+    frag.appendChild(span);
+    rem = rem.slice(bestIdx + bestErr.original.length);
+    pending.splice(bestPos, 1);
+  }
+  if (rem) frag.appendChild(document.createTextNode(rem));
+
+  bubble.innerHTML = '';
+  bubble.appendChild(frag);
+  scrollDown();
+}
+
+function showErrorPopup(el, err) {
+  const key = 'err:' + err.original + ':' + err.correction;
+  if (popupMode === 'hover' && popup._key === key && popup.style.display === 'block') return;
+
+  popup._key = key;
+  popupMode  = 'hover';
+  popup.innerHTML = '';
+
+  const head = document.createElement('div');
+  head.className = 'popup-correction';
+  head.innerHTML =
+      `<span class="orig">${esc(err.original)}</span>`
+    + `<span class="arr">→</span>`
+    + `<span class="fix">${esc(err.correction)}</span>`;
+  popup.appendChild(head);
+
+  if (err.explanation) {
+    const body = document.createElement('div');
+    body.className = 'popup-body';
+    body.innerHTML = renderMarkdown(err.explanation);
+    popup.appendChild(body);
+  }
+
+  positionPopup(el);
+}
+
+function addLoader() {
+  const d = document.createElement('div'); d.className = 'loader-wrap'; d.id = 'loader';
+  const b = document.createElement('div'); b.className = 'loader-bubble';
+  for (let i=0;i<3;i++){const dot=document.createElement('div');dot.className='dot';dot.style.animationDelay=(i*0.2)+'s';b.appendChild(dot);}
+  d.appendChild(b); chat.appendChild(d); scrollDown(); return d;
+}
+
+function addTranslationMsg(originalText, input) {
+  const outer  = document.createElement('div'); outer.className = 'xlat-wrap';
+  const label  = document.createElement('div'); label.className = 'xlat-label';
+  label.textContent = 'translation of "' + originalText + '"';
+  const bubble = document.createElement('div'); bubble.className = 'xlat-bubble';
+  if (input.words?.length && input.latvian) {
+    bubble.appendChild(makeWordSpans(input.latvian, input.words));
+  } else { bubble.textContent = input.latvian || ''; }
+  outer.appendChild(label); outer.appendChild(bubble);
+  if (input.explanation) {
+    const exp = document.createElement('div'); exp.className = 'xlat-exp';
+    exp.textContent = input.explanation; outer.appendChild(exp);
+  }
+  chat.appendChild(outer); scrollDown();
+}
+
+// ── Send message ───────────────────────────────────────────────────────────────
+
+async function sendMessage() {
+  const text = inp.value.trim();
+  if (!text || busy) return;
+  busy = true; inp.value = ''; inp.style.height = 'auto';
+  setAllDisabled(true); setStatus('thinking…', '#b07000');
+
+  hist.push({ role: 'user', content: text });
+
+  const userWrap = addUserMsg(text);
+  const aiEntry  = { kind: 'ai', response: '', words: [], fullTranslation: '' };
+  const { updateText, finalize, wrap: aiWrap } = createAiBubble(aiEntry);
+
+  try {
+    const { toolUseId, input } = await streamToolApi(hist, SYSTEM, MAIN_TOOL, responseText => {
+      updateText(responseText);
+    });
+
+    // Record assistant tool-call turn + its tool reply (OpenAI shape)
+    hist.push({
+      role: 'assistant',
+      tool_calls: [{ id: toolUseId, type: 'function', function: { name: MAIN_TOOL.name, arguments: JSON.stringify(input || {}) } }]
+    });
+    hist.push({ role: 'tool', tool_call_id: toolUseId, content: 'acknowledged' });
+
+    finalize(input?.response || '', input);
+    showErrors(userWrap, input?.errors);
+
+    aiEntry.response = input?.response || '';
+    aiEntry.words    = input?.words || [];
+    rendered.push({
+      kind:   'user',
+      text:   text,
+      errors: input?.errors || []
+    });
+    rendered.push(aiEntry);
+    saveState();
+
+    setStatus('ready', '#2a7a50');
+
+  } catch {
+    const b = aiWrap.querySelector('.ai-bubble');
+    if (b) b.textContent = 'Произошла ошибка. Попробуйте ещё раз.';
+    setStatus('error', '#a03030');
+  }
+
+  busy = false; setAllDisabled(false); inp.focus();
+}
+
+// ── Translate button ───────────────────────────────────────────────────────────
+
+async function translateInput() {
+  const text = inp.value.trim();
+  if (!text || busy) return;
+  busy = true; setAllDisabled(true); setStatus('translating…', '#b07000');
+  const loader = addLoader();
+  try {
+    const { input } = await callToolApi(
+      [{ role: 'user', content: 'Translate to Latvian: "' + text + '"' }],
+      TRANSLATE_SYSTEM,
+      TRANSLATE_TOOL
+    );
+    loader.remove();
+    addTranslationMsg(text, input);
+    inp.value = input?.latvian || '';
+    inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 100) + 'px';
+    setStatus('ready', '#2a7a50');
+  } catch { loader.remove(); setStatus('error', '#a03030'); }
+  busy = false; setAllDisabled(false); inp.focus();
+}
+
+// ── Input handling ─────────────────────────────────────────────────────────────
+
+inp.addEventListener('input', () => {
+  inp.style.height = 'auto';
+  inp.style.height = Math.min(inp.scrollHeight, 100) + 'px';
+});
+inp.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+// ── Replay persisted UI ───────────────────────────────────────────────────────
+
+function replayRendered() {
+  for (const m of rendered) {
+    if (m.kind === 'user') {
+      const wrap = addUserMsg(m.text);
+      if (m.errors?.length) showErrors(wrap, m.errors);
+    } else if (m.kind === 'ai') {
+      const { finalize } = createAiBubble(m);
+      finalize(m.response, { words: m.words });
+    }
+  }
+}
+
+// ── Fresh greeting ────────────────────────────────────────────────────────────
+
+async function startFreshGreeting() {
+  const initMsg = 'Sāciet sarunu ar mani par kādu interesantu tēmu';
+  const aiEntry = { kind: 'ai', response: '', words: [], fullTranslation: '' };
+  const { updateText, finalize } = createAiBubble(aiEntry);
+  try {
+    const { toolUseId, input } = await streamToolApi(
+      [{ role: 'user', content: initMsg }],
+      SYSTEM, MAIN_TOOL,
+      responseText => updateText(responseText)
+    );
+    hist.push({ role: 'user', content: initMsg });
+    hist.push({
+      role: 'assistant',
+      tool_calls: [{ id: toolUseId, type: 'function', function: { name: MAIN_TOOL.name, arguments: JSON.stringify(input || {}) } }]
+    });
+    hist.push({ role: 'tool', tool_call_id: toolUseId, content: 'acknowledged' });
+    finalize(input?.response || '', input);
+    aiEntry.response = input?.response || '';
+    aiEntry.words    = input?.words || [];
+    rendered.push(aiEntry);
+    saveState();
+    setStatus('ready', '#2a7a50');
+  } catch {
+    // Offline fallback — not persisted (hist has no matching turns, so reloading would re-try).
+    finalize('Labdien! Kā jums klājas šodien?', {
+      words: [
+        { word: 'Labdien',  translation: 'Здравствуйте / Добрый день' },
+        { word: 'Kā',       translation: 'Как' },
+        { word: 'jums',     translation: 'вам (дат. п., вежл.)' },
+        { word: 'klājas',   translation: 'живётся / дела идут' },
+        { word: 'šodien',   translation: 'сегодня' }
+      ],
+      errors: []
+    });
+    setStatus('ready', '#2a7a50');
+  }
+}
+
+// ── Clear button ──────────────────────────────────────────────────────────────
+
+// ── Debug modal ───────────────────────────────────────────────────────────────
+
+const debugModal   = document.getElementById('debugModal');
+const debugContent = document.getElementById('debugContent');
+
+function openDebug() {
+  debugContent.textContent = JSON.stringify({ hist, rendered }, null, 2);
+  debugModal.classList.add('open');
+}
+function closeDebug() { debugModal.classList.remove('open'); }
+
+document.getElementById('debugBtn').addEventListener('click', openDebug);
+document.getElementById('debugCloseBtn').addEventListener('click', closeDebug);
+debugModal.addEventListener('click', e => { if (e.target === debugModal) closeDebug(); });
+document.getElementById('debugCopyBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('debugCopyBtn');
+  try { await navigator.clipboard.writeText(debugContent.textContent); btn.textContent = 'Copied'; }
+  catch { btn.textContent = 'Failed'; }
+  setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
+});
+
+// ── Clear button ──────────────────────────────────────────────────────────────
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  if (busy) return;
+  if (!confirm('Очистить всю историю разговора?')) return;
+  hist = [];
+  rendered = [];
+  clearState();
+  closePopup();
+  chat.innerHTML = '';
+  startFreshGreeting();
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
+(async () => {
+  const saved = loadState();
+  if (saved && saved.rendered.length) {
+    hist     = saved.hist;
+    rendered = saved.rendered;
+    replayRendered();
+    setStatus('ready', '#2a7a50');
+    return;
+  }
+  await startFreshGreeting();
+})();
+</script>
+</body>
+</html>
