@@ -413,6 +413,69 @@
     white-space: nowrap;
   }
   .popup-link-btn:hover { background: #f0eee9; }
+
+  /* ── Help/Info modal ── */
+  #helpModal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 2000;
+    padding: 20px;
+  }
+  #helpModal.open { display: flex; }
+  #helpBox {
+    background: #fff;
+    width: min(500px, 100%);
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #helpHead {
+    padding: 10px 14px;
+    border-bottom: 1px solid #e0ddd6;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px;
+    font-size: 13px; font-weight: 500;
+    background: #fafaf7;
+    flex-shrink: 0;
+  }
+  #helpHead .actions { display: flex; gap: 6px; }
+  #helpHead button {
+    height: 28px; padding: 0 10px; font-size: 12px;
+    border-radius: 6px;
+  }
+  #helpContent {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 18px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  #helpContent h3 {
+    font-size: 15px;
+    margin: 16px 0 8px 0;
+    color: #2a5a8a;
+  }
+  #helpContent h3:first-child {
+    margin-top: 0;
+  }
+  #helpContent ul {
+    margin: 8px 0;
+    padding-left: 20px;
+  }
+  #helpContent li {
+    margin: 6px 0;
+  }
+  #helpContent .key {
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 12px;
+  }
 </style>
 </head>
 <body>
@@ -441,6 +504,52 @@
 
 <div id="tip"></div>
 <div id="popup"></div>
+
+<div id="helpModal">
+  <div id="helpBox">
+    <div id="helpHead">
+      <span>How Language Practice Works</span>
+      <div class="actions">
+        <button id="helpCloseBtn" title="Close (Esc)">Close</button>
+      </div>
+    </div>
+    <div id="helpContent">
+      <h3>💬 Chat with the AI Tutor</h3>
+      <ul>
+        <li>Type messages in the target language to practice</li>
+        <li>The AI responds in the target language with explanations</li>
+        <li>Each word has a tooltip with its translation</li>
+      </ul>
+      
+      <h3>🔍 Word Exploration</h3>
+      <ul>
+        <li><strong>Hover</strong> over any word to see its translation</li>
+        <li><strong>Click</strong> on a word for detailed grammar explanation</li>
+        <li>Use <span class="key">📚 Dictionary</span> button for definitions</li>
+        <li>Use <span class="key">🔗 Examples</span> button for usage examples</li>
+      </ul>
+      
+      <h3>✏️ Grammar Correction</h3>
+      <ul>
+        <li>The AI highlights errors in your messages</li>
+        <li><strong>Hover</strong> over red-underlined words to see corrections</li>
+        <li>Click to see detailed explanation of the mistake</li>
+      </ul>
+      
+      <h3>🌐 Translation Help</h3>
+      <ul>
+        <li>Use <span class="key">🔁</span> button to translate your input</li>
+        <li>Click <span class="key">🌐</span> on AI messages for full translation</li>
+      </ul>
+      
+      <h3>⚙️ Customize</h3>
+      <ul>
+        <li>Click <span class="key">⚙</span> to change learning/explanation languages</li>
+        <li>Your preferences are saved automatically</li>
+      </ul>
+    </div>
+  </div>
+</div>
 
 <div id="settingsModal">
   <div id="settingsBox">
@@ -1580,6 +1689,24 @@ document.getElementById('settingsSaveBtn').addEventListener('click', async () =>
     hist = []; rendered = []; clearState(); closePopup(); chat.innerHTML = '';
     await startFreshGreeting();
   }
+});
+
+// ── Help modal ────────────────────────────────────────────────────────────────
+
+const helpModal   = document.getElementById('helpModal');
+
+function openHelp() {
+  helpModal.classList.add('open');
+}
+function closeHelp() { helpModal.classList.remove('open'); }
+
+document.getElementById('examplesBtn').addEventListener('click', openHelp);
+document.getElementById('helpCloseBtn').addEventListener('click', closeHelp);
+helpModal.addEventListener('click', e => { if (e.target === helpModal) closeHelp(); });
+
+// Update Esc key handler to include help modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closePopup(); closeDebug(); closeSettings(); closeHelp(); }
 });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
