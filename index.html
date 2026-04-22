@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Language Practice Chat</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -377,6 +377,14 @@
 
   /* ── Mobile Layout ── */
   @media (max-width: 600px) {
+    html, body {
+      height: 100%;
+      height: -webkit-fill-available;
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+    }
+
     body {
       padding: 0;
       align-items: stretch;
@@ -2170,6 +2178,23 @@ function openHelp() {
     desktopHelp.forEach(el => el.style.display = 'none');
     mobileHelp.forEach(el => el.style.display = 'block');
   }
+}
+function closeHelp() { helpModal.classList.remove('open'); }
+
+// Mobile viewport stability - prevent scroll jumps when keyboard appears
+if (!hasHoverSupport) {
+  // Use dynamic viewport units and prevent body scroll
+  document.documentElement.style.height = '100%';
+  document.body.style.height = '100dvh';
+  document.body.style.overflow = 'hidden';
+  
+  // Keep app at viewport height
+  const app = document.getElementById('app');
+  app.style.height = '100dvh';
+  
+  // Ensure chat scrolls independently
+  const chat = document.getElementById('chat');
+  chat.style.webkitOverflowScrolling = 'touch';
 }
 function closeHelp() { helpModal.classList.remove('open'); }
 
