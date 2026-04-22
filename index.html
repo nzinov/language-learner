@@ -377,29 +377,31 @@
 
   /* ── Mobile Layout ── */
   @media (max-width: 600px) {
-    html, body {
+    html {
       height: 100%;
-      height: -webkit-fill-available;
       overflow: hidden;
-      position: fixed;
-      width: 100%;
     }
 
     body {
+      height: 100vh;
+      height: -webkit-fill-available;
+      margin: 0;
       padding: 0;
-      align-items: stretch;
+      overflow: hidden;
+      -webkit-overflow-scrolling: touch;
       background: #fff;
     }
 
     #app {
       height: 100vh;
-      height: 100dvh;
+      height: -webkit-fill-available;
+      max-height: -webkit-fill-available;
       max-width: 100%;
       border: none;
       border-radius: 0;
       box-shadow: none;
-      min-height: 100vh;
-      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
     }
 
     #header {
@@ -2183,18 +2185,51 @@ function closeHelp() { helpModal.classList.remove('open'); }
 
 // Mobile viewport stability - prevent scroll jumps when keyboard appears
 if (!hasHoverSupport) {
-  // Use dynamic viewport units and prevent body scroll
-  document.documentElement.style.height = '100%';
-  document.body.style.height = '100dvh';
-  document.body.style.overflow = 'hidden';
-  
-  // Keep app at viewport height
+  let initialViewportHeight = window.innerHeight;
   const app = document.getElementById('app');
-  app.style.height = '100dvh';
-  
-  // Ensure chat scrolls independently
   const chat = document.getElementById('chat');
-  chat.style.webkitOverflowScrolling = 'touch';
+  
+  // Handle keyboard appearance/disappearance
+  const handleViewportChange = () => {
+    // Use visualViewport API if available (modern mobile browsers)
+    if (window.visualViewport) {
+      const vh = window.visualViewport.height;
+      app.style.height = `${vh}px`;
+      // Force chat to recalculate its scroll area
+      setTimeout(() => {
+        if (chat.scrollHeight > chat.clientHeight) {
+          chat.scrollTop = chat.scrollHeight;
+        }
+      }, 50);
+    } else {
+      // Fallback for older browsers
+      const currentHeight = window.innerHeight;
+      app.style.height = `${currentHeight}px`;
+    }
+  };
+  
+  // Listen for viewport changes
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+  } else {
+    window.addEventListener('resize', handleViewportChange);
+  }
+  
+  // Keep input visible when focused - scroll to bottom of chat
+  const inp = document.getElementById('inp');
+  inp.addEventListener('focus', () => {
+    setTimeout(() => {
+      // Scroll chat to bottom to show input area
+      chat.scrollTop = chat.scrollHeight;
+    }, 300); // Delay for keyboard animation
+  });
+  
+  // Also scroll on resize as backup
+  window.addEventListener('resize', () => {
+    setTimeout(() => {
+      chat.scrollTop = chat.scrollHeight;
+    }, 100);
+  });
 }
 function closeHelp() { helpModal.classList.remove('open'); }
 
