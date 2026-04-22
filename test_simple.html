@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Selection Test</title>
+  <style>
+    .ai-bubble {
+      padding: 10px;
+      background: #f0f0f0;
+      margin: 20px;
+      border-radius: 5px;
+    }
+    #selectionPopup {
+      position: fixed;
+      background: #fff;
+      border: 2px solid blue;
+      padding: 10px;
+      display: none;
+      z-index: 10000;
+    }
+  </style>
+</head>
+<body>
+  <div id="chat">
+    <div class="ai-wrap">
+      <div class="ai-row">
+        <div class="ai-bubble">
+          This is a test sentence with some words to select.
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="selectionPopup"></div>
+  
+  <script>
+    const chat = document.getElementById('chat');
+    let selectionPopup = null;
+    
+    function showSelectionPopup(selectedText) {
+      console.log('showSelectionPopup called with:', selectedText);
+      if (!selectionPopup) {
+        selectionPopup = document.getElementById('selectionPopup');
+      }
+      selectionPopup.textContent = 'Selected: ' + selectedText;
+      selectionPopup.style.display = 'block';
+    }
+    
+    function hideSelectionPopup() {
+      if (selectionPopup) {
+        selectionPopup.style.display = 'none';
+      }
+    }
+    
+    console.log('Setting up mouseup listener on chat');
+    chat.addEventListener('mouseup', () => {
+      console.log('Mouse up on chat!');
+      setTimeout(() => {
+        const selection = window.getSelection().toString().trim();
+        console.log('Selection:', selection);
+        if (selection && selection.length > 0) {
+          const range = window.getSelection().getRangeAt(0);
+          const aiBubble = range.startContainer?.closest ? range.startContainer.closest('.ai-bubble') : null;
+          console.log('AI bubble:', aiBubble);
+          if (aiBubble) {
+            showSelectionPopup(selection);
+          }
+        } else {
+          hideSelectionPopup();
+        }
+      }, 100);
+    });
+  </script>
+</body>
+</html>

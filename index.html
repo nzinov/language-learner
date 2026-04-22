@@ -174,6 +174,11 @@
   }
   .w:hover { background: #fff3cd; color: #7a5c00; }
 
+  /* Mobile: active state feedback */
+  @media (hover: none) and (pointer: coarse) {
+    .w:active { background: #fff3cd; color: #7a5c00; }
+  }
+
   /* User bubble in "has-errors" state: red-tinted, with wavy underlines on wrong words */
   .user-bubble.has-errors {
     background: #fde8e8;
@@ -370,6 +375,237 @@
     font-family: system-ui, sans-serif;
   }
 
+  /* ── Mobile Layout ── */
+  @media (max-width: 600px) {
+    body {
+      padding: 0;
+      align-items: stretch;
+      background: #fff;
+    }
+
+    #app {
+      height: 100vh;
+      height: 100dvh;
+      max-width: 100%;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    #header {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e0ddd6;
+    }
+
+    #headerTitle {
+      font-size: 14px;
+    }
+
+    #header span[style*="font-size:12px;color:#bbb"] {
+      display: none;
+    }
+
+    #status {
+      display: none;
+    }
+
+    #chat {
+      padding: 12px;
+      gap: 12px;
+    }
+
+    .ai-wrap, .user-wrap {
+      max-width: 90%;
+    }
+
+    .ai-bubble, .user-bubble {
+      font-size: 14px;
+      padding: 8px 12px;
+      line-height: 1.6;
+    }
+
+    #input-area {
+      padding: 8px 10px;
+      gap: 4px;
+      border-top: 1px solid #e0ddd6;
+    }
+
+    #inp {
+      font-size: 14px;
+      padding: 8px 10px;
+      min-height: 36px;
+    }
+
+    #sendBtn, #transBtn {
+      height: 36px;
+      font-size: 13px;
+      padding: 0 12px;
+    }
+
+    #clearBtn, #debugBtn, #settingsBtn, #examplesBtn {
+      width: 26px;
+      height: 26px;
+      font-size: 12px;
+    }
+
+    #settingsBtn, #examplesBtn {
+      font-size: 14px;
+    }
+
+    /* Modal adjustments for mobile */
+    #settingsBox, #debugBox, #examplesBox, #helpBox {
+      width: 95%;
+      max-width: none;
+      margin: 0 auto;
+    }
+
+    #settingsBox {
+      padding: 14px 16px 12px;
+    }
+
+    #settingsBox h2 {
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    #settingsBox label {
+      font-size: 11px;
+      margin: 8px 0 3px;
+    }
+
+    #settingsBox input {
+      font-size: 13px;
+      padding: 7px 9px;
+    }
+
+    #settingsBox .hint {
+      font-size: 10px;
+      margin-top: 8px;
+    }
+
+    #settingsBox .actions button {
+      height: 30px;
+      font-size: 12px;
+    }
+
+    #debugHead, #examplesHead, #helpHead {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    #debugHead button, #examplesHead button, #helpHead button {
+      height: 26px;
+      font-size: 11px;
+      padding: 0 8px;
+    }
+
+    #debugContent {
+      padding: 10px 12px;
+      font-size: 11px;
+    }
+
+    #examplesContent {
+      padding: 12px 14px;
+    }
+
+    #examplesContent .example {
+      padding: 10px;
+      margin-bottom: 8px;
+    }
+
+    #examplesContent .example-sentence {
+      font-size: 13px;
+    }
+
+    #examplesContent .example-translation {
+      font-size: 12px;
+    }
+
+    #helpContent {
+      padding: 12px 16px;
+      font-size: 13px;
+    }
+
+    #helpContent h3 {
+      font-size: 14px;
+      margin: 12px 0 6px 0;
+    }
+
+    #helpContent ul {
+      margin: 6px 0;
+      padding-left: 18px;
+    }
+
+    #helpContent li {
+      margin: 4px 0;
+    }
+
+    /* Help modal mobile-specific adjustments */
+    @media (max-width: 600px) {
+      #helpBox {
+        width: 95%;
+        max-width: none;
+        height: 80vh;
+        max-height: 80vh;
+      }
+
+      #helpHead {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+
+      #helpHead button {
+        height: 26px;
+        font-size: 11px;
+        padding: 0 8px;
+      }
+
+      #helpContent {
+        padding: 12px 14px;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      #helpContent h3 {
+        font-size: 14px;
+        margin: 10px 0 5px 0;
+      }
+
+      #helpContent ul {
+        margin: 5px 0;
+        padding-left: 18px;
+      }
+
+      #helpContent li {
+        margin: 3px 0;
+      }
+
+      #helpContent .key {
+        font-size: 11px;
+        padding: 1px 4px;
+      }
+    }
+
+    /* Popup adjustments */
+    #popup {
+      max-width: 90%;
+      padding: 10px 26px 10px 12px;
+      font-size: 12px;
+    }
+
+    .popup-word {
+      font-size: 13px;
+    }
+
+    .popup-link-btn {
+      height: 26px;
+      font-size: 11px;
+      padding: 0 8px;
+    }
+  }
+
   #popup {
     position: fixed;
     background: #fff;
@@ -518,45 +754,67 @@
     <div id="helpContent">
       <h3>💬 Chat with the AI Tutor</h3>
       <ul>
-        <li>Type messages in the target language to practice</li>
-        <li>The AI responds in the target language with explanations</li>
-        <li>Each word has a tooltip with its translation</li>
+        <li>Type in your target language to practice conversation</li>
+        <li>The AI replies in the target language with word-by-word translations</li>
+        <li>Grammar errors are automatically highlighted with corrections</li>
+        <li>Each word in AI responses is interactive - tap or hover to explore</li>
       </ul>
-      
-      <h3>🔍 Word Exploration</h3>
+
+      <h3>🔍 Explore Words</h3>
+      <ul class="desktop-help">
+        <li><strong>Hover</strong> → see instant tooltip with translation</li>
+        <li><strong>Click</strong> → detailed grammar explanation popup</li>
+        <li><strong>📚 Dictionary</strong> button → dictionary definitions</li>
+        <li><strong>🔗 Examples</strong> button → see word used in sentences</li>
+      </ul>
+      <ul class="mobile-help" style="display:none;">
+        <li><strong>Tap</strong> → see instant tooltip with translation</li>
+        <li><strong>Tap again</strong> → detailed grammar explanation</li>
+        <li><strong>📚 Dictionary</strong> button → dictionary definitions</li>
+        <li><strong>🔗 Examples</strong> button → see word used in sentences</li>
+      </ul>
+
+      <h3>📝 Look Up Phrases</h3>
+      <ul class="desktop-help">
+        <li><strong>Select text</strong> with mouse → popup with options</li>
+        <li><strong>📚 Dictionary</strong> → look up multi-word phrases</li>
+        <li><strong>🔗 Examples</strong> → see phrase used in context</li>
+        <li>Works only on AI messages (not your own)</li>
+      </ul>
+      <ul class="mobile-help" style="display:none;">
+        <li><strong>Long-press and drag</strong> → select text</li>
+        <li>Tap <strong>📚 Dictionary</strong> or <strong>🔗 Examples</strong></li>
+        <li>Works only on AI messages (not your own)</li>
+      </ul>
+
+      <h3>✏️ Grammar Feedback</h3>
+      <ul class="desktop-help">
+        <li>Red wavy underline = grammar or vocabulary error</li>
+        <li><strong>Hover</strong> the word to see correction</li>
+        <li><strong>Click</strong> for detailed explanation</li>
+      </ul>
+      <ul class="mobile-help" style="display:none;">
+        <li>Red wavy underline = grammar or vocabulary error</li>
+        <li><strong>Tap</strong> the word to see correction</li>
+        <li>Tap for detailed explanation</li>
+      </ul>
+
+      <h3>🌐 Translation Tools</h3>
       <ul>
-        <li><strong>Hover</strong> over any word to see its translation</li>
-        <li><strong>Click</strong> on a word for detailed grammar explanation</li>
-        <li>Use <span class="key">📚 Dictionary</span> button for definitions</li>
-        <li>Use <span class="key">🔗 Examples</span> button for usage examples</li>
+        <li><strong>🔁</strong> button → translate your input to target language</li>
+        <li><strong>🌐</strong> button on AI messages → full translation</li>
       </ul>
-      
-      <h3>📝 Text Selection</h3>
+
+      <h3>⚙️ Settings</h3>
       <ul>
-        <li><strong>Select text</strong> in AI messages with your mouse</li>
-        <li>A popup appears with <span class="key">📚 Dictionary</span> and <span class="key">🔗 Examples</span> buttons</li>
-        <li>Perfect for looking up phrases or sentences you don't understand</li>
-        <li>Works in AI messages only (not in your own messages)</li>
+        <li><strong>⚙</strong> → change target language and explanation language</li>
+        <li>Settings save automatically</li>
+        <li>Changing languages clears the conversation</li>
       </ul>
-      
-      <h3>✏️ Grammar Correction</h3>
-      <ul>
-        <li>The AI highlights errors in your messages</li>
-        <li><strong>Hover</strong> over red-underlined words to see corrections</li>
-        <li>Click to see detailed explanation of the mistake</li>
-      </ul>
-      
-      <h3>🌐 Translation Help</h3>
-      <ul>
-        <li>Use <span class="key">🔁</span> button to translate your input</li>
-        <li>Click <span class="key">🌐</span> on AI messages for full translation</li>
-      </ul>
-      
-      <h3>⚙️ Customize</h3>
-      <ul>
-        <li>Click <span class="key">⚙</span> to change learning/explanation languages</li>
-        <li>Your preferences are saved automatically</li>
-      </ul>
+
+      <p style="margin-top:16px;font-size:12px;color:#888;line-height:1.4;">
+        <strong>Tip:</strong> Start with simple sentences! The AI will correct your mistakes and explain new vocabulary.
+      </p>
     </div>
   </div>
 </div>
@@ -811,6 +1069,19 @@ function showTip(el, text) {
 }
 function hideTip() { tip.style.display = 'none'; }
 
+// ── Device detection ─────────────────────────────────────────────────────────
+
+// Detect if device supports hover (mouse/stylus) vs touch-only
+const hasHoverSupport = window.matchMedia('(hover: hover)').matches;
+
+// Track active touch tooltip for mobile
+let activeTouchTooltip = null;
+let touchTooltipTimer = null;
+
+function isTouchDevice() {
+  return !hasHoverSupport || 'ontouchstart' in window;
+}
+
 // ── Word-explanation popup ────────────────────────────────────────────────────
 
 const popup     = document.getElementById('popup');
@@ -841,6 +1112,16 @@ document.addEventListener('mousedown', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closePopup(); closeDebug(); closeSettings(); }
+});
+
+// Close touch tooltip when tapping away (mobile)
+document.addEventListener('click', e => {
+  if (!hasHoverSupport && activeTouchTooltip && tip.style.display === 'block') {
+    // Check if click is not on a word span
+    if (!e.target.classList.contains('w')) {
+      hideTouchTooltip();
+    }
+  }
 });
 
 // ── Text selection handler for assistant messages ────────────────────────────
@@ -1258,13 +1539,31 @@ function makeWordSpans(responseText, words) {
     const s = document.createElement('span');
     s.className   = 'w';
     s.textContent = w.word;
-    s.addEventListener('mouseenter', () => showTip(s, w.translation));
-    s.addEventListener('mouseleave', hideTip);
-    s.addEventListener('click', e => {
-      e.stopPropagation();
-      hideTip();
-      showWordExplanation(s, w.word, responseText, w.translation, absOffset);
-    });
+
+    if (hasHoverSupport) {
+      // Desktop: hover for tooltip, click for full popup
+      s.addEventListener('mouseenter', () => showTip(s, w.translation));
+      s.addEventListener('mouseleave', hideTip);
+      s.addEventListener('click', e => {
+        e.stopPropagation();
+        hideTip();
+        showWordExplanation(s, w.word, responseText, w.translation, absOffset);
+      });
+    } else {
+      // Mobile: tap once for tooltip (closes on tap away), tap again for full popup
+      s.addEventListener('click', e => {
+        e.stopPropagation();
+        if (activeTouchTooltip === s) {
+          // Tooltip already shown for this word - open full popup
+          hideTouchTooltip();
+          showWordExplanation(s, w.word, responseText, w.translation, absOffset);
+        } else {
+          // Show tooltip (will close if another word was active)
+          showTouchTooltip(s, w.translation);
+        }
+      });
+    }
+
     frag.appendChild(s);
     const step = idx + w.word.length;
     consumed += step;
@@ -1272,6 +1571,26 @@ function makeWordSpans(responseText, words) {
   }
   if (rem) frag.appendChild(document.createTextNode(rem));
   return frag;
+}
+
+// Mobile touch tooltip functions
+function showTouchTooltip(el, text) {
+  // Reuse the existing tip element
+  tip.textContent = text;
+  tip.style.display = 'block';
+  const r = el.getBoundingClientRect(), sy = window.scrollY||0, sx = window.scrollX||0;
+  tip.style.top  = (r.bottom + sy + 5) + 'px';
+  tip.style.left = Math.max(4, Math.min(r.left + sx, (window.innerWidth||700) - 270)) + 'px';
+  activeTouchTooltip = el;
+}
+
+function hideTouchTooltip() {
+  tip.style.display = 'none';
+  activeTouchTooltip = null;
+  if (touchTooltipTimer) {
+    clearTimeout(touchTooltipTimer);
+    touchTooltipTimer = null;
+  }
 }
 
 // ── Streaming response-field extractor ────────────────────────────────────────
@@ -1499,17 +1818,27 @@ function addUserMsg(text) {
   bubble.textContent = text; wrap.appendChild(bubble);
   wrap._bubble = bubble;
 
-  // Delegated hover on the user bubble: show the error popup when pointing at an .err-word span.
-  bubble.addEventListener('mouseover', e => {
-    const errSpan = e.target && e.target.closest ? e.target.closest('.err-word') : null;
-    if (errSpan && errSpan._err) {
-      cancelPopupHide();
-      showErrorPopup(errSpan, errSpan._err);
-    }
-  });
-  bubble.addEventListener('mouseout', e => {
-    if (!bubble.contains(e.relatedTarget)) schedulePopupHide();
-  });
+  if (hasHoverSupport) {
+    // Desktop: hover for error popup
+    bubble.addEventListener('mouseover', e => {
+      const errSpan = e.target && e.target.closest ? e.target.closest('.err-word') : null;
+      if (errSpan && errSpan._err) {
+        cancelPopupHide();
+        showErrorPopup(errSpan, errSpan._err);
+      }
+    });
+    bubble.addEventListener('mouseout', e => {
+      if (!bubble.contains(e.relatedTarget)) schedulePopupHide();
+    });
+  } else {
+    // Mobile: tap to show error popup
+    bubble.addEventListener('click', e => {
+      const errSpan = e.target && e.target.closest ? e.target.closest('.err-word') : null;
+      if (errSpan && errSpan._err) {
+        showErrorPopup(errSpan, errSpan._err);
+      }
+    });
+  }
 
   chat.appendChild(wrap); scrollDown(); return wrap;
 }
@@ -1558,9 +1887,9 @@ function showErrors(userWrap, errors) {
 function showErrorPopup(el, err) {
   const key = 'err:' + err.original + ':' + err.correction;
   if (popupMode === 'hover' && popup._key === key && popup.style.display === 'block') return;
+  if (popupMode === 'click' && popup._key === key && popup.style.display === 'block') return;
 
   popup._key = key;
-  popupMode  = 'hover';
   popup.innerHTML = '';
 
   const head = document.createElement('div');
@@ -1578,7 +1907,22 @@ function showErrorPopup(el, err) {
     popup.appendChild(body);
   }
 
+  // Close button for mobile (click mode)
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'popup-close';
+  closeBtn.innerHTML = '&times;';
+  closeBtn.title = 'Close';
+  closeBtn.onclick = (e) => {
+    e.stopPropagation();
+    closePopup();
+  };
+  popup.appendChild(closeBtn);
+
   positionPopup(el);
+
+  // On mobile, use click mode (persistent popup)
+  // On desktop, use hover mode (auto-hides on mouseleave)
+  popupMode = hasHoverSupport ? 'hover' : 'click';
 }
 
 function addLoader() {
@@ -1816,6 +2160,16 @@ const helpModal   = document.getElementById('helpModal');
 
 function openHelp() {
   helpModal.classList.add('open');
+  // Toggle help text based on device
+  const desktopHelp = helpModal.querySelectorAll('.desktop-help');
+  const mobileHelp = helpModal.querySelectorAll('.mobile-help');
+  if (hasHoverSupport) {
+    desktopHelp.forEach(el => el.style.display = 'block');
+    mobileHelp.forEach(el => el.style.display = 'none');
+  } else {
+    desktopHelp.forEach(el => el.style.display = 'none');
+    mobileHelp.forEach(el => el.style.display = 'block');
+  }
 }
 function closeHelp() { helpModal.classList.remove('open'); }
 

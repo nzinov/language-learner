@@ -1,0 +1,8 @@
+tools:
+    shell:
+        allow:
+            - git log *
+            - gh run view *
+            - curl *
+            - head *
+            - grep *
