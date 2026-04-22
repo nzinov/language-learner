@@ -377,25 +377,17 @@
 
   /* ── Mobile Layout ── */
   @media (max-width: 600px) {
-    html {
+    html, body {
       height: 100%;
-      overflow: hidden;
-    }
-
-    body {
-      height: 100vh;
-      height: -webkit-fill-available;
       margin: 0;
       padding: 0;
       overflow: hidden;
-      -webkit-overflow-scrolling: touch;
       background: #fff;
     }
 
     #app {
       height: 100vh;
-      height: -webkit-fill-available;
-      max-height: -webkit-fill-available;
+      height: 100dvh;
       max-width: 100%;
       border: none;
       border-radius: 0;
@@ -2183,53 +2175,28 @@ function openHelp() {
 }
 function closeHelp() { helpModal.classList.remove('open'); }
 
-// Mobile viewport stability - prevent scroll jumps when keyboard appears
+// Mobile keyboard handling - keep input visible
 if (!hasHoverSupport) {
-  let initialViewportHeight = window.innerHeight;
-  const app = document.getElementById('app');
   const chat = document.getElementById('chat');
-  
-  // Handle keyboard appearance/disappearance
-  const handleViewportChange = () => {
-    // Use visualViewport API if available (modern mobile browsers)
-    if (window.visualViewport) {
-      const vh = window.visualViewport.height;
-      app.style.height = `${vh}px`;
-      // Force chat to recalculate its scroll area
-      setTimeout(() => {
-        if (chat.scrollHeight > chat.clientHeight) {
-          chat.scrollTop = chat.scrollHeight;
-        }
-      }, 50);
-    } else {
-      // Fallback for older browsers
-      const currentHeight = window.innerHeight;
-      app.style.height = `${currentHeight}px`;
-    }
-  };
-  
-  // Listen for viewport changes
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', handleViewportChange);
-  } else {
-    window.addEventListener('resize', handleViewportChange);
-  }
-  
-  // Keep input visible when focused - scroll to bottom of chat
   const inp = document.getElementById('inp');
+  
+  // When input is focused, scroll to show it
   inp.addEventListener('focus', () => {
     setTimeout(() => {
-      // Scroll chat to bottom to show input area
+      // Scroll chat to bottom to show input area above keyboard
       chat.scrollTop = chat.scrollHeight;
-    }, 300); // Delay for keyboard animation
+    }, 300);
   });
   
-  // Also scroll on resize as backup
-  window.addEventListener('resize', () => {
-    setTimeout(() => {
-      chat.scrollTop = chat.scrollHeight;
-    }, 100);
-  });
+  // Use visualViewport to adjust for keyboard if available
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      // Ensure chat scrolls to bottom when keyboard appears
+      setTimeout(() => {
+        chat.scrollTop = chat.scrollHeight;
+      }, 50);
+    });
+  }
 }
 function closeHelp() { helpModal.classList.remove('open'); }
 
