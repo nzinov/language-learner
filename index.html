@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual">
 <title>Language Practice Chat</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -383,11 +383,27 @@
       padding: 0;
       overflow: hidden;
       background: #fff;
+      /* Prevent mobile Safari from bouncing / scrolling the page itself */
+      overscroll-behavior: none;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      /* Override desktop body styles */
+      min-height: 0;
+      align-items: stretch;
+      justify-content: stretch;
     }
 
     #app {
-      height: 100vh;
-      height: 100dvh;
+      /* Use position:fixed so the app always covers the visible area.
+         The JS handler sets --app-height via visualViewport. */
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;            /* fallback */
+      height: var(--app-height, 100%);
       max-width: 100%;
       border: none;
       border-radius: 0;
@@ -430,6 +446,7 @@
 
     #input-area {
       padding: 8px 10px;
+      padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
       gap: 4px;
       border-top: 1px solid #e0ddd6;
     }
@@ -545,49 +562,36 @@
     }
 
     /* Help modal mobile-specific adjustments */
-    @media (max-width: 600px) {
-      #helpBox {
-        width: 95%;
-        max-width: none;
-        height: 80vh;
-        max-height: 80vh;
-      }
+    #helpBox {
+      width: 95%;
+      max-width: none;
+      height: 80vh;
+      max-height: 80vh;
+    }
 
-      #helpHead {
-        padding: 8px 12px;
-        font-size: 12px;
-      }
+    #helpContent {
+      padding: 12px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
 
-      #helpHead button {
-        height: 26px;
-        font-size: 11px;
-        padding: 0 8px;
-      }
+    #helpContent h3 {
+      font-size: 14px;
+      margin: 10px 0 5px 0;
+    }
 
-      #helpContent {
-        padding: 12px 14px;
-        font-size: 13px;
-        line-height: 1.5;
-      }
+    #helpContent ul {
+      margin: 5px 0;
+      padding-left: 18px;
+    }
 
-      #helpContent h3 {
-        font-size: 14px;
-        margin: 10px 0 5px 0;
-      }
+    #helpContent li {
+      margin: 3px 0;
+    }
 
-      #helpContent ul {
-        margin: 5px 0;
-        padding-left: 18px;
-      }
-
-      #helpContent li {
-        margin: 3px 0;
-      }
-
-      #helpContent .key {
-        font-size: 11px;
-        padding: 1px 4px;
-      }
+    #helpContent .key {
+      font-size: 11px;
+      padding: 1px 4px;
     }
 
     /* Popup adjustments */
@@ -1066,8 +1070,9 @@ function scrollDown() { chat.scrollTop = chat.scrollHeight; }
 function showTip(el, text) {
   tip.textContent = text; tip.style.display = 'block';
   const r = el.getBoundingClientRect(), sy = window.scrollY||0, sx = window.scrollX||0;
+  const vw = (window.visualViewport ? window.visualViewport.width : window.innerWidth) || 700;
   tip.style.top  = (r.bottom + sy + 5) + 'px';
-  tip.style.left = Math.max(4, Math.min(r.left + sx, (window.innerWidth||700) - 270)) + 'px';
+  tip.style.left = Math.max(4, Math.min(r.left + sx, vw - 270)) + 'px';
 }
 function hideTip() { tip.style.display = 'none'; }
 
@@ -1249,8 +1254,8 @@ document.addEventListener('mousedown', (e) => {
 
 function positionPopup(el) {
   const r  = el.getBoundingClientRect();
-  const vw = window.innerWidth  || 700;
-  const vh = window.innerHeight || 800;
+  const vw = (window.visualViewport ? window.visualViewport.width  : window.innerWidth)  || 700;
+  const vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight) || 800;
   popup.style.display = 'block';
   const pw = popup.offsetWidth, ph = popup.offsetHeight;
   let top  = r.bottom + 8;
@@ -2175,30 +2180,62 @@ function openHelp() {
 }
 function closeHelp() { helpModal.classList.remove('open'); }
 
-// Mobile keyboard handling - keep input visible
-if (!hasHoverSupport) {
+// Mobile keyboard handling — keep input visible by tracking visualViewport
+(function initMobileViewport() {
+  const isMobile = window.matchMedia('(max-width: 600px)').matches;
+  if (!isMobile) return;
+
+  const app  = document.getElementById('app');
   const chat = document.getElementById('chat');
-  const inp = document.getElementById('inp');
-  
-  // When input is focused, scroll to show it
-  inp.addEventListener('focus', () => {
-    setTimeout(() => {
-      // Scroll chat to bottom to show input area above keyboard
-      chat.scrollTop = chat.scrollHeight;
-    }, 300);
-  });
-  
-  // Use visualViewport to adjust for keyboard if available
+  const inp  = document.getElementById('inp');
+
+  // Immediately set --app-height so the CSS var is available
+  function updateHeight() {
+    // visualViewport.height shrinks when the virtual keyboard is open
+    const h = window.visualViewport
+      ? window.visualViewport.height
+      : window.innerHeight;
+    app.style.setProperty('--app-height', h + 'px');
+  }
+
+  updateHeight();                     // run once on load
+
   if (window.visualViewport) {
+    // These events fire whenever the keyboard shows/hides or the
+    // browser chrome changes (address-bar collapse on scroll, etc.)
     window.visualViewport.addEventListener('resize', () => {
-      // Ensure chat scrolls to bottom when keyboard appears
-      setTimeout(() => {
+      updateHeight();
+      // Keep the newest messages / input in view
+      requestAnimationFrame(() => {
         chat.scrollTop = chat.scrollHeight;
-      }, 50);
+      });
+    });
+
+    // Also handle scroll (iOS sometimes scrolls the viewport instead of resizing)
+    window.visualViewport.addEventListener('scroll', () => {
+      updateHeight();
+    });
+  } else {
+    // Fallback for browsers without visualViewport
+    window.addEventListener('resize', () => {
+      updateHeight();
+      requestAnimationFrame(() => {
+        chat.scrollTop = chat.scrollHeight;
+      });
     });
   }
-}
-function closeHelp() { helpModal.classList.remove('open'); }
+
+  // When the input gains focus, scroll to the bottom after the keyboard animation
+  inp.addEventListener('focus', () => {
+    // The keyboard animation takes ~300ms on most devices
+    setTimeout(() => {
+      updateHeight();
+      chat.scrollTop = chat.scrollHeight;
+      // On some WebKit browsers, scrollIntoView works more reliably
+      inp.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }, 350);
+  });
+})();
 
 document.getElementById('examplesBtn').addEventListener('click', openHelp);
 document.getElementById('helpCloseBtn').addEventListener('click', closeHelp);
