@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Latvian Practice Chat</title>
+<title>Language Practice Chat</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -95,9 +95,11 @@
   #sendBtn  { height: 40px; padding: 0 16px; font-size: 14px; flex-shrink: 0; }
   #transBtn { height: 40px; padding: 0 12px; font-size: 13px; flex-shrink: 0; color: #555; }
   #clearBtn,
-  #debugBtn { width: 28px; height: 28px; padding: 0; font-size: 13px; line-height: 1;
-              display: inline-flex; align-items: center; justify-content: center; color: #888;
-              font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+  #debugBtn,
+  #settingsBtn { width: 28px; height: 28px; padding: 0; font-size: 13px; line-height: 1;
+                 display: inline-flex; align-items: center; justify-content: center; color: #888;
+                 font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+  #settingsBtn { font-size: 15px; }
 
   /* ── Message layout ── */
   .ai-wrap   { display: flex; flex-direction: column; max-width: 88%; align-self: flex-start; }
@@ -247,6 +249,35 @@
     background: #fdfdfa;
   }
 
+  /* ── Settings modal ── */
+  #settingsModal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 2000;
+    padding: 20px;
+  }
+  #settingsModal.open { display: flex; }
+  #settingsBox {
+    background: #fff;
+    width: min(420px, 100%);
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    padding: 16px 18px 14px;
+  }
+  #settingsBox h2 { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
+  #settingsBox label { display: block; font-size: 12px; color: #666; margin: 10px 0 4px; }
+  #settingsBox input { width: 100%; padding: 8px 10px; font-size: 14px; font-family: inherit;
+                       border: 1px solid #d0cdc6; border-radius: 8px; color: #1a1a18;
+                       outline: none; }
+  #settingsBox input:focus { border-color: #888; }
+  #settingsBox .hint { font-size: 11px; color: #999; margin-top: 10px; line-height: 1.4; }
+  #settingsBox .actions { margin-top: 14px; display: flex; justify-content: flex-end; gap: 8px; }
+  #settingsBox .actions button { height: 32px; padding: 0 14px; font-size: 13px; border-radius: 6px; }
+  #settingsSaveBtn { background: #2a5a8a; color: #fff; border-color: #2a5a8a; }
+  #settingsSaveBtn:hover:not(:disabled) { background: #214a73; }
+
   .xlat-wrap   { display: flex; flex-direction: column; align-self: stretch; }
   .xlat-label  { font-size: 11px; color: #2a7a50; font-weight: 500; margin-bottom: 4px; text-align: center; }
   .xlat-bubble { padding: 10px 14px; border-radius: 14px; font-size: 15px; line-height: 1.7; background: #f0ede8; border: 1px solid #a8cfa8; color: #1a1a18; }
@@ -306,19 +337,20 @@
 <div id="app">
   <div id="header">
     <div style="display:flex;align-items:center;gap:10px;">
-      <span style="font-weight:500;font-size:15px;">Latvian practice</span>
-      <span style="font-size:12px;color:#bbb;">hover words · grammar tips · → LV</span>
+      <span id="headerTitle" style="font-weight:500;font-size:15px;">Practice</span>
+      <span style="font-size:12px;color:#bbb;">hover words · grammar tips</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
       <span id="status" style="font-size:12px;color:#2a7a50;">ready</span>
-      <button id="debugBtn" title="Показать состояние (debug)">{ }</button>
-      <button id="clearBtn" title="Очистить разговор">🗑</button>
+      <button id="settingsBtn" title="Languages & settings">⚙</button>
+      <button id="debugBtn" title="Show state (debug)">{ }</button>
+      <button id="clearBtn" title="Clear conversation">🗑</button>
     </div>
   </div>
   <div id="chat"></div>
   <div id="input-area">
-    <textarea id="inp" rows="1" placeholder="Rakstiet latviski… (or English / Russian)"></textarea>
-    <button id="transBtn" onclick="translateInput()" title="Translate to Latvian">→ LV</button>
+    <textarea id="inp" rows="1" placeholder="Type here…"></textarea>
+    <button id="transBtn" onclick="translateInput()" title="Translate input">🔁</button>
     <button id="sendBtn"  onclick="sendMessage()">Send</button>
   </div>
 </div>
@@ -326,10 +358,25 @@
 <div id="tip"></div>
 <div id="popup"></div>
 
+<div id="settingsModal">
+  <div id="settingsBox">
+    <h2>Languages</h2>
+    <label for="langLearning">Language I'm learning</label>
+    <input id="langLearning" type="text" placeholder="e.g. Latvian, Japanese, Spanish…">
+    <label for="langExplain">Explanations &amp; translations in</label>
+    <input id="langExplain" type="text" placeholder="e.g. Russian, English, French…">
+    <div class="hint">Changing languages clears the current conversation and starts fresh.</div>
+    <div class="actions">
+      <button id="settingsCancelBtn">Cancel</button>
+      <button id="settingsSaveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="debugModal">
   <div id="debugBox">
     <div id="debugHead">
-      <span>Debug · состояние разговора</span>
+      <span>Debug · conversation state</span>
       <div class="actions">
         <button id="debugCopyBtn" title="Copy JSON">Copy</button>
         <button id="debugCloseBtn" title="Close (Esc)">Close</button>
@@ -340,92 +387,118 @@
 </div>
 
 <script>
-// ── Tool definitions ───────────────────────────────────────────────────────────
+// ── Language configuration ────────────────────────────────────────────────────
 
-const MAIN_TOOL = {
-  name: 'latvian_reply',
-  description: 'Reply to the learner in Latvian with word-by-word Russian translation and feedback on their input.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      response: {
-        type: 'string',
-        description: 'Your Latvian reply (1–3 natural sentences).'
-      },
-      words: {
-        type: 'array',
-        description: 'Every word from response in order. Strip ALL punctuation from each token — "Labdien" not "Labdien!", "klājas" not "klājas?".',
-        items: {
-          type: 'object',
-          properties: {
-            word:        { type: 'string', description: 'Latvian word without punctuation.' },
-            translation: { type: 'string', description: 'Russian meaning (in Russian, Cyrillic); brief grammar note in Russian if useful, e.g. "(дат. п.)".' }
-          },
-          required: ['word', 'translation']
+const LANG_KEY          = 'lang_config_v1';
+const DEFAULT_LEARNING  = 'Latvian';
+const DEFAULT_EXPLAIN   = 'Russian';
+
+let LEARNING_LANG = DEFAULT_LEARNING;
+let EXPLAIN_LANG  = DEFAULT_EXPLAIN;
+
+function loadLangConfig() {
+  try {
+    const raw = localStorage.getItem(LANG_KEY);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    if (obj && typeof obj.learning === 'string' && obj.learning.trim()) LEARNING_LANG = obj.learning.trim();
+    if (obj && typeof obj.explain  === 'string' && obj.explain.trim())  EXPLAIN_LANG  = obj.explain.trim();
+  } catch {}
+}
+function saveLangConfig() {
+  try { localStorage.setItem(LANG_KEY, JSON.stringify({ learning: LEARNING_LANG, explain: EXPLAIN_LANG })); } catch {}
+}
+
+// ── Tool definitions & system prompts (rebuilt when languages change) ─────────
+
+const MAIN_TOOL_NAME      = 'tutor_reply';
+const TRANSLATE_TOOL_NAME = 'translation_result';
+
+let MAIN_TOOL, TRANSLATE_TOOL, SYSTEM, TRANSLATE_SYSTEM;
+
+function rebuildPrompts() {
+  MAIN_TOOL = {
+    name: MAIN_TOOL_NAME,
+    description: `Reply to the learner in ${LEARNING_LANG} with a word-by-word ${EXPLAIN_LANG} translation and feedback on their input.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        response: {
+          type: 'string',
+          description: `Your ${LEARNING_LANG} reply (1–3 natural sentences).`
+        },
+        words: {
+          type: 'array',
+          description: 'Every word from response in order. Strip ALL punctuation from each token.',
+          items: {
+            type: 'object',
+            properties: {
+              word:        { type: 'string', description: `${LEARNING_LANG} word without punctuation.` },
+              translation: { type: 'string', description: `${EXPLAIN_LANG} meaning; brief grammar note in ${EXPLAIN_LANG} if useful.` }
+            },
+            required: ['word', 'translation']
+          }
+        },
+        errors: {
+          type: 'array',
+          description: `Grammar or vocabulary mistakes in the learner's message. Empty array if none. If ${LEARNING_LANG} uses diacritics/accents, never flag their absence — the learner intentionally skips them. Explanations MUST be written in ${EXPLAIN_LANG}.`,
+          items: {
+            type: 'object',
+            properties: {
+              original:    { type: 'string' },
+              correction:  { type: 'string' },
+              explanation: { type: 'string', description: `Short explanation of the mistake, written in ${EXPLAIN_LANG}.` }
+            },
+            required: ['original', 'correction', 'explanation']
+          }
         }
       },
-      errors: {
-        type: 'array',
-        description: 'Grammar or vocabulary mistakes in the learner\'s message. Empty array if none. NEVER flag missing diacritics. Explanations MUST be written in Russian.',
-        items: {
-          type: 'object',
-          properties: {
-            original:    { type: 'string' },
-            correction:  { type: 'string' },
-            explanation: { type: 'string', description: 'Short explanation of the mistake, written in Russian.' }
-          },
-          required: ['original', 'correction', 'explanation']
-        }
-      }
-    },
-    required: ['response', 'words', 'errors']
-    // fullTranslation removed — fetched lazily via a separate call when user clicks 🌐
-  }
-};
+      required: ['response', 'words', 'errors']
+    }
+  };
 
-const TRANSLATE_TOOL = {
-  name: 'translation_result',
-  description: 'Return the Latvian translation with word breakdown and explanation in Russian.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      latvian:     { type: 'string', description: 'The Latvian translation.' },
-      words: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            word:        { type: 'string', description: 'Latvian word without punctuation.' },
-            translation: { type: 'string', description: 'Russian meaning (Cyrillic); brief grammar note in Russian if useful.' }
-          },
-          required: ['word', 'translation']
-        }
+  TRANSLATE_TOOL = {
+    name: TRANSLATE_TOOL_NAME,
+    description: `Return the ${LEARNING_LANG} translation with word breakdown and explanation in ${EXPLAIN_LANG}.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        translated: { type: 'string', description: `The ${LEARNING_LANG} translation.` },
+        words: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              word:        { type: 'string', description: `${LEARNING_LANG} word without punctuation.` },
+              translation: { type: 'string', description: `${EXPLAIN_LANG} meaning; brief grammar note in ${EXPLAIN_LANG} if useful.` }
+            },
+            required: ['word', 'translation']
+          }
+        },
+        explanation: { type: 'string', description: `2–3 sentences in ${EXPLAIN_LANG} on key vocabulary or grammar.` }
       },
-      explanation: { type: 'string', description: '2–3 sentences in Russian on key vocabulary or grammar.' }
-    },
-    required: ['latvian', 'words', 'explanation']
-  }
-};
+      required: ['translated', 'words', 'explanation']
+    }
+  };
 
-// ── System prompts ─────────────────────────────────────────────────────────────
-
-const SYSTEM = `You are a warm Latvian language tutor having natural conversations in Latvian.
-Always call the latvian_reply tool to respond.
+  SYSTEM = `You are a warm ${LEARNING_LANG} language tutor having natural conversations in ${LEARNING_LANG}.
+Always call the ${MAIN_TOOL_NAME} tool to respond.
 
 Drive the conversation — don't just answer passively:
-- Lead the learner into interesting, varied topics.
-- Always end with a concrete follow-up question that invites the learner to answer with a full sentence rather than yes or not. Vary the question type.
+- Lead the learner into interesting, varied topics (culture, food, nature, daily life, holidays, music, literature, history, travel, quirky local habits of ${LEARNING_LANG}-speaking regions).
+- Always end with a concrete follow-up question that invites the learner to answer with a full sentence rather than yes or no. Vary the question type.
 - If a thread is going flat or the learner gives short answers, gently pivot to a fresh topic instead of grinding on.
 - Match the learner's level — keep sentences short and clear for beginners, richer for stronger learners.
 
 Rules:
 - words: every word from your response in order; strip all punctuation from each token
-- ALL translations, explanations, and grammar notes MUST be written in Russian (Cyrillic). The "response" field stays in Latvian; everything explanatory is in Russian.
-- errors: grammar/vocabulary mistakes in the learner's message only; empty array if none; explanations in Russian
-- If the user writes in Russian: understand it and respond in Latvian as usual
+- ALL translations, explanations, and grammar notes MUST be written in ${EXPLAIN_LANG}. The "response" field stays in ${LEARNING_LANG}; everything explanatory is in ${EXPLAIN_LANG}.
+- errors: grammar/vocabulary mistakes in the learner's message only; empty array if none; explanations in ${EXPLAIN_LANG}
+- If the user writes in ${EXPLAIN_LANG} or another language, understand it and respond in ${LEARNING_LANG} as usual
 - Be encouraging and natural`;
 
-const TRANSLATE_SYSTEM = `Translate the given text to Latvian. Call the translation_result tool. The Latvian translation goes in the "latvian" field; per-word glosses and the explanation must be written in Russian (Cyrillic).`;
+  TRANSLATE_SYSTEM = `Translate the given text to ${LEARNING_LANG}. Call the ${TRANSLATE_TOOL_NAME} tool. The ${LEARNING_LANG} translation goes in the "translated" field; per-word glosses and the explanation must be written in ${EXPLAIN_LANG}.`;
+}
 
 // ── API config ─────────────────────────────────────────────────────────────────
 
@@ -552,7 +625,7 @@ document.addEventListener('mousedown', e => {
   closePopup();
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closePopup(); closeDebug(); }
+  if (e.key === 'Escape') { closePopup(); closeDebug(); closeSettings(); }
 });
 
 function positionPopup(el) {
@@ -634,15 +707,15 @@ async function explainWord(word, sentence, brief, offset) {
       max_tokens: 350,
       messages: [
         { role: 'system', content:
-          'You are a Latvian language tutor. The learner clicked a word in a Latvian sentence and wants an extended explanation. Do not mention the sentence, the user can see the sentence in the ui and nows locations of the word.' +
+          `You are a ${LEARNING_LANG} language tutor. The learner clicked a word in a ${LEARNING_LANG} sentence and wants an extended explanation. Do not mention the sentence, the user can see it in the UI and knows the location of the word. ` +
           'The exact occurrence the learner clicked is wrapped in [[ ]] in the sentence provided — always explain that occurrence, not any other one. ' +
-          'Explain the word, any interesting things about it\'s usage in daily conversations. Also explain the grammar around the word and why it is like that. Do not explain very simple things, only notable ones' +
-          'Reply in RUSSIAN (Cyrillic). Be concise — 3–5 short sentences, no preamble, no markdown headers. Use plain prose. Latvian word forms you cite stay in Latvian; everything else is in Russian. DROP any [[ and ]] in your response' },
+          'Explain the word, any interesting things about its usage in daily conversations. Also explain the grammar around the word and why it is like that. Do not explain very simple things, only notable ones. ' +
+          `Reply in ${EXPLAIN_LANG}. Be concise — 3–5 short sentences, no preamble, no markdown headers. Use plain prose. ${LEARNING_LANG} word forms you cite stay in ${LEARNING_LANG}; everything else is in ${EXPLAIN_LANG}. DROP any [[ and ]] in your response.` },
         { role: 'user', content:
-          `Предложение (нужное вхождение отмечено двойными скобками): "${marked}"\n` +
-          `Слово: "${word}" (вхождение №${occurrence})` +
-          (brief ? `\nКраткий перевод: ${brief}` : '') +
-          `\n\nОбъясни грамматику и употребление именно отмеченного вхождения слова "${word}" в этом предложении.` }
+          `Sentence (target occurrence wrapped in double brackets): "${marked}"\n` +
+          `Word: "${word}" (occurrence #${occurrence})` +
+          (brief ? `\nBrief gloss: ${brief}` : '') +
+          `\n\nExplain the grammar and usage of the marked occurrence of "${word}" in this sentence.` }
       ]
     })
   });
@@ -816,30 +889,30 @@ function createAiBubble(entry) {
   const node   = document.createTextNode(''); bubble.appendChild(node);
 
   const enBtn  = document.createElement('button'); enBtn.className = 'en-btn'; enBtn.textContent = '🌐';
-  enBtn.title  = 'Показать перевод';
+  enBtn.title  = 'Show translation';
 
   const panel  = document.createElement('div'); panel.className = 'trans-panel';
 
-  let latvianText = '';
+  let sourceText = '';
   let open        = false;
   let fetching    = false;
 
   enBtn.addEventListener('click', async () => {
     // Lazy fetch on first open if we don't already have a cached translation
-    if (!entry?.fullTranslation && !fetching && latvianText) {
+    if (!entry?.fullTranslation && !fetching && sourceText) {
       fetching = true;
-      panel.textContent = 'Загрузка перевода…';
+      panel.textContent = 'Loading translation…';
       open = true;
       panel.style.display = 'block';
       enBtn.classList.add('active');
       scrollDown();
       try {
-        const ru = await translateToRussian(latvianText);
-        if (entry) entry.fullTranslation = ru;
-        panel.textContent = ru;
+        const translated = await translateToExplain(sourceText);
+        if (entry) entry.fullTranslation = translated;
+        panel.textContent = translated;
         saveState();
       } catch {
-        panel.textContent = 'Не удалось загрузить перевод.';
+        panel.textContent = 'Could not load translation.';
       } finally {
         fetching = false;
         scrollDown();
@@ -865,13 +938,13 @@ function createAiBubble(entry) {
 
   // Replace plain text node with hoverable word spans; always reveal 🌐 button.
   // If a translation is already cached on the entry (e.g. from replay), pre-fill the panel.
-  function finalize(latvian, input) {
-    latvianText = latvian;
+  function finalize(src, input) {
+    sourceText = src;
     bubble.innerHTML = '';
     bubble.appendChild(
       input?.words?.length
-        ? makeWordSpans(latvian, input.words)
-        : document.createTextNode(latvian)
+        ? makeWordSpans(src, input.words)
+        : document.createTextNode(src)
     );
     if (entry?.fullTranslation) panel.textContent = entry.fullTranslation;
     enBtn.classList.add('ready');
@@ -881,8 +954,8 @@ function createAiBubble(entry) {
   return { updateText, finalize, wrap };
 }
 
-// On-demand Latvian → Russian translator for the 🌐 button
-async function translateToRussian(latvian) {
+// On-demand LEARNING_LANG → EXPLAIN_LANG translator for the 🌐 button.
+async function translateToExplain(src) {
   const key = getApiKey();
   if (!key) throw new Error('no api key');
   const res = await fetch(OPENROUTER_URL, {
@@ -892,8 +965,8 @@ async function translateToRussian(latvian) {
       model:      MODEL,
       max_tokens: 300,
       messages: [
-        { role: 'system', content: 'Переведи латышский текст на естественный русский. В ответе дай только перевод — без комментариев, без кавычек, без префикса.' },
-        { role: 'user',   content: latvian }
+        { role: 'system', content: `Translate the given ${LEARNING_LANG} text into natural ${EXPLAIN_LANG}. Reply with only the translation — no commentary, no quotes, no prefix.` },
+        { role: 'user',   content: src }
       ]
     })
   });
@@ -1004,9 +1077,10 @@ function addTranslationMsg(originalText, input) {
   const label  = document.createElement('div'); label.className = 'xlat-label';
   label.textContent = 'translation of "' + originalText + '"';
   const bubble = document.createElement('div'); bubble.className = 'xlat-bubble';
-  if (input.words?.length && input.latvian) {
-    bubble.appendChild(makeWordSpans(input.latvian, input.words));
-  } else { bubble.textContent = input.latvian || ''; }
+  const translated = input.translated || input.latvian || ''; // latvian: back-compat with older saved state
+  if (input.words?.length && translated) {
+    bubble.appendChild(makeWordSpans(translated, input.words));
+  } else { bubble.textContent = translated; }
   outer.appendChild(label); outer.appendChild(bubble);
   if (input.explanation) {
     const exp = document.createElement('div'); exp.className = 'xlat-exp';
@@ -1058,7 +1132,7 @@ async function sendMessage() {
 
   } catch {
     const b = aiWrap.querySelector('.ai-bubble');
-    if (b) b.textContent = 'Произошла ошибка. Попробуйте ещё раз.';
+    if (b) b.textContent = 'An error occurred. Please try again.';
     setStatus('error', '#a03030');
   }
 
@@ -1074,13 +1148,13 @@ async function translateInput() {
   const loader = addLoader();
   try {
     const { input } = await callToolApi(
-      [{ role: 'user', content: 'Translate to Latvian: "' + text + '"' }],
+      [{ role: 'user', content: `Translate to ${LEARNING_LANG}: "${text}"` }],
       TRANSLATE_SYSTEM,
       TRANSLATE_TOOL
     );
     loader.remove();
     addTranslationMsg(text, input);
-    inp.value = input?.latvian || '';
+    inp.value = input?.translated || input?.latvian || '';
     inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 100) + 'px';
     setStatus('ready', '#2a7a50');
   } catch { loader.remove(); setStatus('error', '#a03030'); }
@@ -1114,7 +1188,7 @@ function replayRendered() {
 // ── Fresh greeting ────────────────────────────────────────────────────────────
 
 async function startFreshGreeting() {
-  const initMsg = 'Sāciet sarunu ar mani par kādu interesantu tēmu';
+  const initMsg = `Start a conversation with me on an interesting topic (in ${LEARNING_LANG}, per your system instructions).`;
   const aiEntry = { kind: 'ai', response: '', words: [], fullTranslation: '' };
   const { updateText, finalize } = createAiBubble(aiEntry);
   try {
@@ -1137,17 +1211,8 @@ async function startFreshGreeting() {
     setStatus('ready', '#2a7a50');
   } catch {
     // Offline fallback — not persisted (hist has no matching turns, so reloading would re-try).
-    finalize('Labdien! Kā jums klājas šodien?', {
-      words: [
-        { word: 'Labdien',  translation: 'Здравствуйте / Добрый день' },
-        { word: 'Kā',       translation: 'Как' },
-        { word: 'jums',     translation: 'вам (дат. п., вежл.)' },
-        { word: 'klājas',   translation: 'живётся / дела идут' },
-        { word: 'šodien',   translation: 'сегодня' }
-      ],
-      errors: []
-    });
-    setStatus('ready', '#2a7a50');
+    finalize('Could not reach the tutor. Check your API key and network connection.', { words: [] });
+    setStatus('error', '#a03030');
   }
 }
 
@@ -1178,7 +1243,7 @@ document.getElementById('debugCopyBtn').addEventListener('click', async () => {
 
 document.getElementById('clearBtn').addEventListener('click', () => {
   if (busy) return;
-  if (!confirm('Очистить всю историю разговора?')) return;
+  if (!confirm('Clear the entire conversation?')) return;
   hist = [];
   rendered = [];
   clearState();
@@ -1187,9 +1252,55 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   startFreshGreeting();
 });
 
+// ── Settings modal (languages) ────────────────────────────────────────────────
+
+const settingsModal = document.getElementById('settingsModal');
+const langLearning  = document.getElementById('langLearning');
+const langExplain   = document.getElementById('langExplain');
+
+function openSettings() {
+  langLearning.value = LEARNING_LANG;
+  langExplain.value  = EXPLAIN_LANG;
+  settingsModal.classList.add('open');
+  setTimeout(() => langLearning.focus(), 0);
+}
+function closeSettings() { settingsModal.classList.remove('open'); }
+
+function applyLanguageUi() {
+  document.getElementById('headerTitle').textContent = `${LEARNING_LANG} practice`;
+  inp.placeholder = `Type in ${LEARNING_LANG}…`;
+  document.getElementById('transBtn').title = `Translate input to ${LEARNING_LANG}`;
+  document.title = `${LEARNING_LANG} Practice Chat`;
+}
+
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('settingsCancelBtn').addEventListener('click', closeSettings);
+settingsModal.addEventListener('click', e => { if (e.target === settingsModal) closeSettings(); });
+
+document.getElementById('settingsSaveBtn').addEventListener('click', async () => {
+  if (busy) return;
+  const newLearning = (langLearning.value || '').trim() || DEFAULT_LEARNING;
+  const newExplain  = (langExplain.value  || '').trim() || DEFAULT_EXPLAIN;
+  const changed     = newLearning !== LEARNING_LANG || newExplain !== EXPLAIN_LANG;
+  LEARNING_LANG = newLearning;
+  EXPLAIN_LANG  = newExplain;
+  saveLangConfig();
+  rebuildPrompts();
+  applyLanguageUi();
+  closeSettings();
+  if (changed) {
+    hist = []; rendered = []; clearState(); closePopup(); chat.innerHTML = '';
+    await startFreshGreeting();
+  }
+});
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 (async () => {
+  loadLangConfig();
+  rebuildPrompts();
+  applyLanguageUi();
+
   const saved = loadState();
   if (saved && saved.rendered.length) {
     hist     = saved.hist;
