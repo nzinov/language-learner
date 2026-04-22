@@ -847,7 +847,7 @@ document.addEventListener('keydown', e => {
 
 let selectionPopup = null;
 
-function showSelectionPopup(selectedText) {
+async function showSelectionPopup(selectedText) {
   console.log('Showing selection popup for:', selectedText);
   // Create or reuse popup
   if (!selectionPopup) {
@@ -870,15 +870,13 @@ function showSelectionPopup(selectedText) {
     console.log('Created selection popup');
   }
 
-  const dictLink = getWordExamplesLink(selectedText.trim(), LEARNING_LANG);
+  // Show loading state while checking Wiktionary
   const corpusLink = getParallelCorpusLink(selectedText.trim(), LEARNING_LANG);
-
   selectionPopup.innerHTML = `
     <div style="font-weight:500;margin-bottom:8px;">"${selectedText.trim()}"</div>
     <div style="display:flex;gap:6px;">
-      <button onclick="window.open('${dictLink}', '_blank', 'noopener,noreferrer');document.getElementById('selectionPopup').style.display='none';" 
-              style="flex:1;padding:6px 8px;font-size:12px;border:1px solid #d0cdc6;border-radius:4px;background:#f8f7f4;cursor:pointer;">
-        📚 Dictionary
+      <button disabled style="flex:1;padding:6px 8px;font-size:12px;border:1px solid #d0cdc6;border-radius:4px;background:#f8f7f4;cursor:wait;opacity:0.6;">
+        ⏳ Checking...
       </button>
       <button onclick="window.open('${corpusLink}', '_blank', 'noopener,noreferrer');document.getElementById('selectionPopup').style.display='none';" 
               style="flex:1;padding:6px 8px;font-size:12px;border:1px solid #d0cdc6;border-radius:4px;background:#f8f7f4;cursor:pointer;">
@@ -897,6 +895,25 @@ function showSelectionPopup(selectedText) {
   }
   
   selectionPopup.style.display = 'block';
+  
+  // Get the dictionary link (async check)
+  const dictLink = await getWordExamplesLink(selectedText.trim(), LEARNING_LANG, EXPLAIN_LANG);
+  
+  // Update the popup with the actual link
+  selectionPopup.innerHTML = `
+    <div style="font-weight:500;margin-bottom:8px;">"${selectedText.trim()}"</div>
+    <div style="display:flex;gap:6px;">
+      <button onclick="window.open('${dictLink}', '_blank', 'noopener,noreferrer');document.getElementById('selectionPopup').style.display='none';" 
+              style="flex:1;padding:6px 8px;font-size:12px;border:1px solid #d0cdc6;border-radius:4px;background:#f8f7f4;cursor:pointer;">
+        📚 Dictionary
+      </button>
+      <button onclick="window.open('${corpusLink}', '_blank', 'noopener,noreferrer');document.getElementById('selectionPopup').style.display='none';" 
+              style="flex:1;padding:6px 8px;font-size:12px;border:1px solid #d0cdc6;border-radius:4px;background:#f8f7f4;cursor:pointer;">
+        🔗 Examples
+      </button>
+    </div>
+  `;
+  
   console.log('Popup displayed, position:', selectionPopup.style.left, selectionPopup.style.top);
 }
 
@@ -1011,8 +1028,8 @@ async function showWordExplanation(el, word, sentence, brief, offset) {
   positionPopup(el);
 
   // Add click handler for dictionary link
-  linkBtn.addEventListener('click', () => {
-    const examplesUrl = getWordExamplesLink(word, LEARNING_LANG);
+  linkBtn.addEventListener('click', async () => {
+    const examplesUrl = await getWordExamplesLink(word, LEARNING_LANG, EXPLAIN_LANG);
     window.open(examplesUrl, '_blank', 'noopener,noreferrer');
   });
 
@@ -1033,31 +1050,123 @@ async function showWordExplanation(el, word, sentence, brief, offset) {
   }
 }
 
+// Check if a Wiktionary article exists using the REST API
+// Returns true if page exists, false otherwise
+async function wiktionaryArticleExists(langCode, word) {
+  const encodedWord = encodeURIComponent(word.toLowerCase());
+  // Use Wiktionary REST API which supports CORS
+  // https://en.wiktionary.org/api/rest_v1/page/html/{title}
+  const url = `https://${langCode}.wiktionary.org/api/rest_v1/page/html/${encodedWord}`;
+  
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    return response.ok;
+  } catch (err) {
+    // If fetch fails (network error, CORS), assume it doesn't exist and fall back to English
+    console.warn(`Failed to check ${langCode}.wiktionary.org for "${word}":`, err);
+    return false;
+  }
+}
+
 // Generate external link for word usage examples
-function getWordExamplesLink(word, lang) {
+// Tries explanation language Wiktionary first, falls back to English if article doesn't exist
+async function getWordExamplesLink(word, learningLang, explainLang) {
   const encodedWord = encodeURIComponent(word);
-  // Try different sites based on language
-  const sites = {
-    'latvian': `https://en.wiktionary.org/wiki/${encodedWord}#Latvian`,
-    'latviešu': `https://en.wiktionary.org/wiki/${encodedWord}#Latvian`,
-    'japanese': `https://jisho.org/search/${encodedWord}`,
-    '日本語': `https://jisho.org/search/${encodedWord}`,
-    'spanish': `https://en.wiktionary.org/wiki/${encodedWord}#Spanish`,
-    'español': `https://en.wiktionary.org/wiki/${encodedWord}#Spanish`,
-    'french': `https://en.wiktionary.org/wiki/${encodedWord}#French`,
-    'français': `https://en.wiktionary.org/wiki/${encodedWord}#French`,
-    'german': `https://en.wiktionary.org/wiki/${encodedWord}#German`,
-    'deutsch': `https://en.wiktionary.org/wiki/${encodedWord}#German`,
-    'italian': `https://en.wiktionary.org/wiki/${encodedWord}#Italian`,
-    'portuguese': `https://en.wiktionary.org/wiki/${encodedWord}#Portuguese`,
-    'russian': `https://en.wiktionary.org/wiki/${encodedWord}#Russian`,
-    'русский': `https://en.wiktionary.org/wiki/${encodedWord}#Russian`,
-    'chinese': `https://en.wiktionary.org/wiki/${encodedWord}#Chinese`,
-    'mandarin': `https://en.wiktionary.org/wiki/${encodedWord}#Chinese`
+  // Always use lowercase for Wiktionary
+  const encodedWordLower = encodeURIComponent(word.toLowerCase());
+  
+  // Map explanation language to Wiktionary subdomain code
+  const wiktionaryLangCodes = {
+    'english': 'en',
+    'английский': 'en',
+    'spanish': 'es',
+    'español': 'es',
+    'french': 'fr',
+    'français': 'fr',
+    'german': 'de',
+    'deutsch': 'de',
+    'italian': 'it',
+    'italiano': 'it',
+    'portuguese': 'pt',
+    'português': 'pt',
+    'russian': 'ru',
+    'русский': 'ru',
+    'chinese': 'zh',
+    'mandarin': 'zh',
+    'japanese': 'ja',
+    '日本語': 'ja',
+    'latvian': 'lv',
+    'latviešu': 'lv',
+    'polish': 'pl',
+    'polski': 'pl',
+    'ukrainian': 'uk',
+    'українська': 'uk',
+    'dutch': 'nl',
+    'nederlands': 'nl',
+    'swedish': 'sv',
+    'svenska': 'sv',
+    'danish': 'da',
+    'dansk': 'da',
+    'norwegian': 'no',
+    'norsk': 'no',
+    'finnish': 'fi',
+    'suomi': 'fi',
+    'czech': 'cs',
+    'čeština': 'cs',
+    'hungarian': 'hu',
+    'magyar': 'hu',
+    'romanian': 'ro',
+    'română': 'ro',
+    'bulgarian': 'bg',
+    'български': 'bg',
+    'greek': 'el',
+    'ελληνικά': 'el',
+    'turkish': 'tr',
+    'türkçe': 'tr',
+    'korean': 'ko',
+    '한국어': 'ko'
   };
   
-  const langLower = lang.toLowerCase();
-  return sites[langLower] || `https://en.wiktionary.org/wiki/${encodedWord}`;
+  // Get the Wiktionary subdomain code for the explanation language
+  const explainLangLower = explainLang ? explainLang.toLowerCase() : 'english';
+  const explainWikiCode = wiktionaryLangCodes[explainLangLower] || 'en';
+  
+  // For Japanese, use jisho.org instead of Wiktionary
+  if (learningLang.toLowerCase() === 'japanese' || learningLang === '日本語') {
+    return `https://jisho.org/search/${encodedWord}`;
+  }
+  
+  // Try explanation language Wiktionary first if it's different from English
+  if (explainWikiCode !== 'en') {
+    const exists = await wiktionaryArticleExists(explainWikiCode, word);
+    if (exists) {
+      // Article exists in explanation language, use that
+      return `https://${explainWikiCode}.wiktionary.org/wiki/${encodedWordLower}`;
+    }
+    // Fall through to English Wiktionary
+  }
+  
+  // Use English Wiktionary (either as fallback or if explanation language is English)
+  // Try different sites based on the learning language
+  const sites = {
+    'latvian': `https://en.wiktionary.org/wiki/${encodedWordLower}#Latvian`,
+    'latviešu': `https://en.wiktionary.org/wiki/${encodedWordLower}#Latvian`,
+    'spanish': `https://en.wiktionary.org/wiki/${encodedWordLower}#Spanish`,
+    'español': `https://en.wiktionary.org/wiki/${encodedWordLower}#Spanish`,
+    'french': `https://en.wiktionary.org/wiki/${encodedWordLower}#French`,
+    'français': `https://en.wiktionary.org/wiki/${encodedWordLower}#French`,
+    'german': `https://en.wiktionary.org/wiki/${encodedWordLower}#German`,
+    'deutsch': `https://en.wiktionary.org/wiki/${encodedWordLower}#German`,
+    'italian': `https://en.wiktionary.org/wiki/${encodedWordLower}#Italian`,
+    'portuguese': `https://en.wiktionary.org/wiki/${encodedWordLower}#Portuguese`,
+    'russian': `https://en.wiktionary.org/wiki/${encodedWordLower}#Russian`,
+    'русский': `https://en.wiktionary.org/wiki/${encodedWordLower}#Russian`,
+    'chinese': `https://en.wiktionary.org/wiki/${encodedWordLower}#Chinese`,
+    'mandarin': `https://en.wiktionary.org/wiki/${encodedWordLower}#Chinese`
+  };
+  
+  const langLower = learningLang.toLowerCase();
+  return sites[langLower] || `https://en.wiktionary.org/wiki/${encodedWordLower}`;
 }
 
 // Generate link to parallel corpus (Tatoeba) for example sentences with translations
