@@ -873,7 +873,7 @@ async function showWordExplanation(el, word, sentence, brief, offset) {
   const corpusBtn = document.createElement('button');
   corpusBtn.className = 'popup-link-btn';
   corpusBtn.innerHTML = '🔗 Examples';
-  corpusBtn.title = 'View real example sentences with translations';
+  corpusBtn.title = 'View translations and examples on Linguee';
 
   // Button container for side-by-side layout
   const btnContainer = document.createElement('div');
@@ -944,31 +944,31 @@ function getWordExamplesLink(word, lang) {
 // Generate link to parallel corpus (Tatoeba) for example sentences with translations
 function getParallelCorpusLink(word, lang) {
   const encodedWord = encodeURIComponent(word);
-  // Tatoeba sentence search - shows sentences with translations
-  // Language codes for Tatoeba
-  const tatoebaLangs = {
-    'latvian': 'lav',
-    'latviešu': 'lav',
-    'japanese': 'jpn',
-    '日本語': 'jpn',
-    'spanish': 'spa',
-    'español': 'spa',
-    'french': 'fra',
-    'français': 'fra',
-    'german': 'deu',
-    'deutsch': 'deu',
-    'italian': 'ita',
-    'portuguese': 'por',
-    'russian': 'rus',
-    'русский': 'rus',
-    'chinese': 'cmn',
-    'mandarin': 'cmn',
-    'english': 'eng'
+  // Linguee - shows translations and example sentences from bilingual texts
+  // URL format: https://www.linguee.com/{to-lang}-{from-lang}/search?source={from-lang}&query={word}
+  const lingueeLangs = {
+    'latvian': 'latvian',
+    'latviešu': 'latvian',
+    'japanese': 'japanese',
+    '日本語': 'japanese',
+    'spanish': 'spanish',
+    'español': 'spanish',
+    'french': 'french',
+    'français': 'french',
+    'german': 'german',
+    'deutsch': 'german',
+    'italian': 'italian',
+    'portuguese': 'portuguese',
+    'russian': 'russian',
+    'русский': 'russian',
+    'chinese': 'chinese',
+    'mandarin': 'chinese',
+    'english': 'english'
   };
   
-  const langCode = tatoebaLangs[lang.toLowerCase()] || 'eng';
-  // Tatoeba search for sentences containing the word
-  return `https://tatoeba.org/en/sentences/search?from=${langCode}&query=${encodedWord}`;
+  const fromLang = lingueeLangs[lang.toLowerCase()] || 'english';
+  // Linguee search URL
+  return `https://www.linguee.com/english-${fromLang}/search?source=${fromLang}&query=${encodedWord}`;
 }
 
 async function explainWord(word, sentence, brief, offset) {
