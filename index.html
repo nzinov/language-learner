@@ -278,6 +278,70 @@
   #settingsSaveBtn { background: #2a5a8a; color: #fff; border-color: #2a5a8a; }
   #settingsSaveBtn:hover:not(:disabled) { background: #214a73; }
 
+  /* ── Examples modal ── */
+  #examplesModal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 2000;
+    padding: 20px;
+  }
+  #examplesModal.open { display: flex; }
+  #examplesBox {
+    background: #fff;
+    width: min(520px, 100%);
+    max-height: 80vh;
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #examplesHead {
+    padding: 10px 14px;
+    border-bottom: 1px solid #e0ddd6;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px;
+    font-size: 13px; font-weight: 500;
+    background: #fafaf7;
+    flex-shrink: 0;
+  }
+  #examplesHead .actions { display: flex; gap: 6px; }
+  #examplesHead button {
+    height: 28px; padding: 0 10px; font-size: 12px;
+    border-radius: 6px;
+  }
+  #examplesContent {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  #examplesContent .example {
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #f8f7f4;
+    border-radius: 8px;
+    border-left: 3px solid #2a5a8a;
+  }
+  #examplesContent .example-sentence {
+    font-weight: 500;
+    color: #1a1a18;
+    margin-bottom: 6px;
+  }
+  #examplesContent .example-translation {
+    font-size: 13px;
+    color: #666;
+  }
+  #examplesLoading {
+    padding: 40px;
+    text-align: center;
+    color: #999;
+    font-size: 14px;
+  }
+
   .xlat-wrap   { display: flex; flex-direction: column; align-self: stretch; }
   .xlat-label  { font-size: 11px; color: #2a7a50; font-weight: 500; margin-bottom: 4px; text-align: center; }
   .xlat-bubble { padding: 10px 14px; border-radius: 14px; font-size: 15px; line-height: 1.7; background: #f0ede8; border: 1px solid #a8cfa8; color: #1a1a18; }
@@ -330,6 +394,25 @@
     border-radius: 4px;
   }
   .popup-close:hover { background: #f2f2ee; color: #333; }
+  .popup-link-btn {
+    flex: 1;
+    minWidth: 120px;
+    maxWidth: 140px;
+    height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+    background: #f8f7f4;
+    border: 1px solid #e0ddd6;
+    border-radius: 6px;
+    color: #555;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .popup-link-btn:hover { background: #f0eee9; }
 </style>
 </head>
 <body>
@@ -342,6 +425,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
       <span id="status" style="font-size:12px;color:#2a7a50;">ready</span>
+      <button id="examplesBtn" title="Show examples">💡</button>
       <button id="settingsBtn" title="Languages & settings">⚙</button>
       <button id="debugBtn" title="Show state (debug)">{ }</button>
       <button id="clearBtn" title="Clear conversation">🗑</button>
@@ -383,6 +467,18 @@
       </div>
     </div>
     <pre id="debugContent"></pre>
+  </div>
+</div>
+
+<div id="examplesModal">
+  <div id="examplesBox">
+    <div id="examplesHead">
+      <span>Examples in <span id="examplesLang"></span></span>
+      <div class="actions">
+        <button id="examplesCloseBtn" title="Close (Esc)">Close</button>
+      </div>
+    </div>
+    <div id="examplesContent"></div>
   </div>
 </div>
 
@@ -628,6 +724,110 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closePopup(); closeDebug(); closeSettings(); }
 });
 
+// ── Text selection handler for assistant messages ────────────────────────────
+
+let selectionPopup = null;
+
+function showSelectionPopup(selectedText) {
+  console.log('Showing selection popup for:', selectedText);
+  // Create or reuse popup
+  if (!selectionPopup) {
+    selectionPopup = document.createElement('div');
+    selectionPopup.id = 'selectionPopup';
+    selectionPopup.style.cssText = `
+      position: fixed;
+      background: #fff;
+      border: 1px solid #d0cdc6;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #333;
+      display: none;
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      max-width: 280px;
+    `;
+    document.body.appendChild(selectionPopup);
+    console.log('Created selection popup');
+  }
+
+  const dictLink = getWordExamplesLink(selectedText.trim(), LEARNING_LANG);
+  const corpusLink = getParallelCorpusLink(selectedText.trim(), LEARNING_LANG);
+
+  selectionPopup.innerHTML = `
+    <div style="font-weight:500;margin-bottom:8px;">"${selectedText.trim()}"</div>
+    <div style="display:flex;gap:6px;">
+      <button onclick="window.open('${dictLink}', '_blank', 'noopener,noreferrer');document.getElementById('selectionPopup').style.display='none';" 
+              style="flex:1;padding:6px 8px;font-size:12px;border:1px solid #d0cdc6;border-radius:4px;background:#f8f7f4;cursor:pointer;">
+        📚 Dictionary
+      </button>
+      <button onclick="window.open('${corpusLink}', '_blank', 'noopener,noreferrer');document.getElementById('selectionPopup').style.display='none';" 
+              style="flex:1;padding:6px 8px;font-size:12px;border:1px solid #d0cdc6;border-radius:4px;background:#f8f7f4;cursor:pointer;">
+        🔗 Examples
+      </button>
+    </div>
+  `;
+
+  // Position near selection
+  const selection = window.getSelection();
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    selectionPopup.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
+    selectionPopup.style.top = (rect.bottom + 8) + 'px';
+  }
+  
+  selectionPopup.style.display = 'block';
+  console.log('Popup displayed, position:', selectionPopup.style.left, selectionPopup.style.top);
+}
+
+function hideSelectionPopup() {
+  if (selectionPopup) {
+    selectionPopup.style.display = 'none';
+  }
+}
+
+// Handle text selection in chat
+chat.addEventListener('mouseup', () => {
+  setTimeout(() => {
+    const selection = window.getSelection().toString().trim();
+    if (selection) {
+      const range = window.getSelection().getRangeAt(0);
+      
+      // Traverse up from selection to find AI bubble
+      let container = range.startContainer;
+      let aiBubble = null;
+      
+      if (container.nodeType === Node.TEXT_NODE) {
+        container = container.parentElement;
+      }
+      
+      while (container && container !== chat) {
+        if (container.classList && container.classList.contains('ai-bubble')) {
+          aiBubble = container;
+          break;
+        }
+        container = container.parentElement;
+      }
+      
+      if (aiBubble) {
+        showSelectionPopup(selection);
+      } else {
+        hideSelectionPopup();
+      }
+    } else {
+      hideSelectionPopup();
+    }
+  }, 100);
+});
+
+// Hide selection popup when clicking elsewhere
+document.addEventListener('mousedown', (e) => {
+  if (selectionPopup && !selectionPopup.contains(e.target)) {
+    hideSelectionPopup();
+  }
+});
+
 function positionPopup(el) {
   const r  = el.getBoundingClientRect();
   const vw = window.innerWidth  || 700;
@@ -665,12 +865,43 @@ async function showWordExplanation(el, word, sentence, brief, offset) {
   if (wordCache.has(key)) body.innerHTML = renderMarkdown(wordCache.get(key));
   else                    body.textContent = 'Loading…';
 
+  const linkBtn = document.createElement('button');
+  linkBtn.className = 'popup-link-btn';
+  linkBtn.innerHTML = '📚 Dictionary';
+  linkBtn.title = 'View word definition and examples';
+
+  const corpusBtn = document.createElement('button');
+  corpusBtn.className = 'popup-link-btn';
+  corpusBtn.innerHTML = '🔗 Examples';
+  corpusBtn.title = 'View real example sentences with translations';
+
+  // Button container for side-by-side layout
+  const btnContainer = document.createElement('div');
+  btnContainer.style.display = 'flex';
+  btnContainer.style.gap = '8px';
+  btnContainer.style.marginBottom = '10px';
+  btnContainer.appendChild(linkBtn);
+  btnContainer.appendChild(corpusBtn);
+
   popup.appendChild(closeBtn);
   popup.appendChild(title);
   if (brief) popup.appendChild(briefEl);
+  popup.appendChild(btnContainer);
   popup.appendChild(body);
 
   positionPopup(el);
+
+  // Add click handler for dictionary link
+  linkBtn.addEventListener('click', () => {
+    const examplesUrl = getWordExamplesLink(word, LEARNING_LANG);
+    window.open(examplesUrl, '_blank', 'noopener,noreferrer');
+  });
+
+  // Add click handler for parallel corpus link
+  corpusBtn.addEventListener('click', () => {
+    const corpusUrl = getParallelCorpusLink(word, LEARNING_LANG);
+    window.open(corpusUrl, '_blank', 'noopener,noreferrer');
+  });
 
   if (!wordCache.has(key)) {
     try {
@@ -681,6 +912,63 @@ async function showWordExplanation(el, word, sentence, brief, offset) {
       if (popup._key === key) body.textContent = 'Could not load explanation.';
     }
   }
+}
+
+// Generate external link for word usage examples
+function getWordExamplesLink(word, lang) {
+  const encodedWord = encodeURIComponent(word);
+  // Try different sites based on language
+  const sites = {
+    'latvian': `https://en.wiktionary.org/wiki/${encodedWord}#Latvian`,
+    'latviešu': `https://en.wiktionary.org/wiki/${encodedWord}#Latvian`,
+    'japanese': `https://jisho.org/search/${encodedWord}`,
+    '日本語': `https://jisho.org/search/${encodedWord}`,
+    'spanish': `https://en.wiktionary.org/wiki/${encodedWord}#Spanish`,
+    'español': `https://en.wiktionary.org/wiki/${encodedWord}#Spanish`,
+    'french': `https://en.wiktionary.org/wiki/${encodedWord}#French`,
+    'français': `https://en.wiktionary.org/wiki/${encodedWord}#French`,
+    'german': `https://en.wiktionary.org/wiki/${encodedWord}#German`,
+    'deutsch': `https://en.wiktionary.org/wiki/${encodedWord}#German`,
+    'italian': `https://en.wiktionary.org/wiki/${encodedWord}#Italian`,
+    'portuguese': `https://en.wiktionary.org/wiki/${encodedWord}#Portuguese`,
+    'russian': `https://en.wiktionary.org/wiki/${encodedWord}#Russian`,
+    'русский': `https://en.wiktionary.org/wiki/${encodedWord}#Russian`,
+    'chinese': `https://en.wiktionary.org/wiki/${encodedWord}#Chinese`,
+    'mandarin': `https://en.wiktionary.org/wiki/${encodedWord}#Chinese`
+  };
+  
+  const langLower = lang.toLowerCase();
+  return sites[langLower] || `https://en.wiktionary.org/wiki/${encodedWord}`;
+}
+
+// Generate link to parallel corpus (Tatoeba) for example sentences with translations
+function getParallelCorpusLink(word, lang) {
+  const encodedWord = encodeURIComponent(word);
+  // Tatoeba sentence search - shows sentences with translations
+  // Language codes for Tatoeba
+  const tatoebaLangs = {
+    'latvian': 'lav',
+    'latviešu': 'lav',
+    'japanese': 'jpn',
+    '日本語': 'jpn',
+    'spanish': 'spa',
+    'español': 'spa',
+    'french': 'fra',
+    'français': 'fra',
+    'german': 'deu',
+    'deutsch': 'deu',
+    'italian': 'ita',
+    'portuguese': 'por',
+    'russian': 'rus',
+    'русский': 'rus',
+    'chinese': 'cmn',
+    'mandarin': 'cmn',
+    'english': 'eng'
+  };
+  
+  const langCode = tatoebaLangs[lang.toLowerCase()] || 'eng';
+  // Tatoeba search for sentences containing the word
+  return `https://tatoeba.org/en/sentences/search?from=${langCode}&query=${encodedWord}`;
 }
 
 async function explainWord(word, sentence, brief, offset) {
