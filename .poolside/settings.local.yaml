@@ -6,3 +6,5 @@ tools:
             - curl *
             - head *
             - grep *
+            - cd *
+            - node *
